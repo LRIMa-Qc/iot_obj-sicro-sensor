@@ -1,0 +1,12 @@
+# Copyright (c) 2023 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_LRIMA_GREENHOUSE_NRF52833
+
+config BOARD
+	default "lrima_greenhouse_nrf52833"
+
+config BT_CTLR
+   default BT
+
+endif

@@ -1,0 +1,11 @@
+description: >
+  Used to read the battery voltage. Using the VDD
+
+compatible: battery-voltage
+
+include: base.yaml
+
+properties:
+  io-channels:
+    required: true
+    description: Channels of the adc used for reading (the pin is not actualy used)

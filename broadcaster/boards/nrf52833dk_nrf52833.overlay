@@ -1,0 +1,123 @@
+/* Mapping adc pins */
+/ {
+
+    pt19: pt19 {
+        compatible = "voltage-divider";
+        io-channels = <&adc 0>;
+        output-ohms = < 10000 >;
+        power-gpios = < &gpio0 20 GPIO_ACTIVE_HIGH>;
+    };
+
+    ground_temperature: ground_temperature {
+        compatible = "voltage-divider";
+        io-channels = <&adc 1>;
+        output-ohms = < 10000 >;
+        power-gpios = < &gpio0 22 GPIO_ACTIVE_HIGH >;
+    };
+
+    ground_humidity: ground_humidity {
+        compatible = "soil-humidity";
+        io-channels = <&adc 2>;
+        power-gpios = < &gpio1 4 GPIO_ACTIVE_HIGH >;
+        dry = < 800 0 0 >;
+        wet = < 2270 0 0 >;
+    };
+
+    battery_voltage: battery_voltage {
+        compatible = "battery-voltage";
+        io-channels = <&adc 4>;
+    };
+
+    /* Used for the real board */
+    // leds{
+    //     compatible = "gpio-leds";
+    //     led1: led1 {
+    //         label = "led1";
+    //         gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
+    //     };
+    // };
+
+    // buttons {
+    //     compatible = "gpio-keys";
+    //     button1: button1 {
+    //         label = "button1";
+    //         gpios = <&gpio0 24 GPIO_ACTIVE_LOW>;
+    //     };
+    // };
+
+    // aliases {
+    //     button1 = &button1;
+    //     led1 = &led1;
+    // };
+};
+
+/* Enable adc driver */
+&adc {
+    status = "okay";
+    #address-cells = <1>;
+    #size-cells = <0>;
+    // Luminoisty sensor
+    channel@0 {
+        reg = <0>;
+        zephyr,gain = "ADC_GAIN_1_4";
+        zephyr,reference = "ADC_REF_INTERNAL";
+        zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+        zephyr,input-positive = < NRF_SAADC_AIN0 >; // P0.02
+        zephyr,resolution = <10>;
+        zephyr,oversampling = < 4 >;
+    };
+
+    // Ground temperature sensor
+    channel@1 {
+        reg = <1>;
+        zephyr,gain = "ADC_GAIN_1_5";
+        zephyr,reference = "ADC_REF_INTERNAL";
+        zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+        zephyr,input-positive = < NRF_SAADC_AIN1 >; // P0.03
+        zephyr,resolution = <10>;
+        zephyr,oversampling = < 4 >;
+    };
+
+    // Ground humidity sensor
+    channel@2 {
+        reg = <2>;
+        zephyr,gain = "ADC_GAIN_1_2";
+        zephyr,reference = "ADC_REF_INTERNAL";
+        zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+        zephyr,input-positive = < NRF_SAADC_AIN2 >; // P0.04
+        zephyr,resolution = <12>;
+        zephyr,oversampling = < 4 >;
+    };
+
+    // Batterie voltage monitor
+    channel@4 {
+        reg = <4>;
+        zephyr,gain = "ADC_GAIN_1_6";
+        zephyr,reference = "ADC_REF_INTERNAL";
+        zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+        zephyr,input-positive = < NRF_SAADC_VDD >; // VDD
+        zephyr,resolution = <10>;
+        zephyr,oversampling = <0>;
+    };
+};
+
+/* Enable i2c driver */
+&i2c1 {
+    status = "okay";
+
+    aht20: aht20@38{
+        compatible = "i2c-device";
+        reg = <0x38>;
+        label = "AHT20";
+    };
+};
+
+/* Deactivating some stuff */
+
+&spi1 {
+    status = "disabled";
+};
+
+&spi3 {
+    status = "disabled";
+};

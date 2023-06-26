@@ -1,0 +1,276 @@
+################################################################################
+# Zephyr OS
+
+source "Kconfig.zephyr"
+
+################################################################################
+
+config SENSOR_SLEEP_DURATION_SEC
+	int "Sleep duration in seconds bettwen two measurements"
+	default 300
+
+config BLE_ADV_DURATION_SEC
+	int "Advertising duration in seconds"
+	default 1
+
+config BLE_MIN_ADV_INTERVAL_MS
+	int "Minimum advertising interval in milliseconds"
+	default 30
+
+config BLE_MAX_ADV_INTERVAL_MS
+	int "Maximum advertising interval in milliseconds"
+	default 40
+
+config BLE_USER_DEFINED_MAC_ADDR
+	string "Overrides the device's BT address"
+	help
+		This address has to be in this format (e.g.: f0:ca:f0:ca:01:d5).
+################################################################################
+# Main module
+
+menu "Main module"
+
+########################################
+# MAIN Logging
+
+choice MAIN_LOG_LEVEL_CHOICE
+    prompt "Log level"
+    depends on LOG
+    default MAIN_LOG_LEVEL_INF
+    help
+        Message severity threshold for logging. This option controls which
+        severities of messages are displayed and which ones are suppressed.
+        Messages can have 4 severity levels - debug, info, warning, and error -
+        in that order of increasing severity. Messages below the configured
+        severity threshold are suppressed.
+
+config MAIN_LOG_LEVEL_OFF
+    bool "Off"
+    help
+        Do not log messages. No messages are displayed. Messages of all severity
+        levels are suppressed.
+
+config MAIN_LOG_LEVEL_ERR
+    bool "Error"
+    help
+        Log up to error messages. Error messages are displayed. Warning, info,
+        and debug messages are suppressed.
+
+config MAIN_LOG_LEVEL_WRN
+    bool "Warning"
+    help
+        Log up to warning messages. Error and warning messages are displayed.
+        Info and debug messages are suppressed.
+
+config MAIN_LOG_LEVEL_INF
+    bool "Info"
+    help
+        Log up to info messages. Error, warning, and info messages are
+        displayed. Debug messages are suppressed.
+
+config MAIN_LOG_LEVEL_DBG
+    bool "Debug"
+    help
+        Log up to debug messages. Messages of all severity levels are displayed.
+        No messages are suppressed.
+
+endchoice
+
+config MAIN_LOG_LEVEL
+    int
+    depends on LOG
+    default 0 if MAIN_LOG_LEVEL_OFF
+    default 1 if MAIN_LOG_LEVEL_ERR
+    default 2 if MAIN_LOG_LEVEL_WRN
+    default 3 if MAIN_LOG_LEVEL_INF
+    default 4 if MAIN_LOG_LEVEL_DBG
+
+endmenu
+
+################################################################################
+# AHT20 module
+
+menu "AHT20 module"
+
+########################################
+# AHT20 Logging
+
+choice AHT20_LOG_LEVEL_CHOICE
+    prompt "Log level"
+    depends on LOG
+    default AHT20_LOG_LEVEL_INF
+    help
+        Message severity threshold for logging. This option controls which
+        severities of messages are displayed and which ones are suppressed.
+        Messages can have 4 severity levels - debug, info, warning, and error -
+        in that order of increasing severity. Messages below the configured
+        severity threshold are suppressed.
+
+config AHT20_LOG_LEVEL_OFF
+    bool "Off"
+    help
+        Do not log messages. No messages are displayed. Messages of all severity
+        levels are suppressed.
+
+config AHT20_LOG_LEVEL_ERR
+    bool "Error"
+    help
+        Log up to error messages. Error messages are displayed. Warning, info,
+        and debug messages are suppressed.
+
+config AHT20_LOG_LEVEL_WRN
+    bool "Warning"
+    help
+        Log up to warning messages. Error and warning messages are displayed.
+        Info and debug messages are suppressed.
+
+config AHT20_LOG_LEVEL_INF
+    bool "Info"
+    help
+        Log up to info messages. Error, warning, and info messages are
+        displayed. Debug messages are suppressed.
+
+config AHT20_LOG_LEVEL_DBG
+    bool "Debug"
+    help
+        Log up to debug messages. Messages of all severity levels are displayed.
+        No messages are suppressed.
+
+endchoice
+
+config AHT20_LOG_LEVEL
+    int
+    depends on LOG
+    default 0 if AHT20_LOG_LEVEL_OFF
+    default 1 if AHT20_LOG_LEVEL_ERR
+    default 2 if AHT20_LOG_LEVEL_WRN
+    default 3 if AHT20_LOG_LEVEL_INF
+    default 4 if AHT20_LOG_LEVEL_DBG
+
+endmenu
+
+################################################################################
+# ADC module
+
+menu "ADC module"
+
+########################################
+# ADC Logging
+
+choice ADC_LOG_LEVEL_CHOICE
+    prompt "Log level"
+    depends on LOG
+    default ADC_LOG_LEVEL_INF
+    help
+        Message severity threshold for logging. This option controls which
+        severities of messages are displayed and which ones are suppressed.
+        Messages can have 4 severity levels - debug, info, warning, and error -
+        in that order of increasing severity. Messages below the configured
+        severity threshold are suppressed.
+
+config ADC_LOG_LEVEL_OFF
+    bool "Off"
+    help
+        Do not log messages. No messages are displayed. Messages of all severity
+        levels are suppressed.
+
+config ADC_LOG_LEVEL_ERR
+    bool "Error"
+    help
+        Log up to error messages. Error messages are displayed. Warning, info,
+        and debug messages are suppressed.
+
+config ADC_LOG_LEVEL_WRN
+    bool "Warning"
+    help
+        Log up to warning messages. Error and warning messages are displayed.
+        Info and debug messages are suppressed.
+
+config ADC_LOG_LEVEL_INF
+    bool "Info"
+    help
+        Log up to info messages. Error, warning, and info messages are
+        displayed. Debug messages are suppressed.
+
+config ADC_LOG_LEVEL_DBG
+    bool "Debug"
+    help
+        Log up to debug messages. Messages of all severity levels are displayed.
+        No messages are suppressed.
+
+endchoice
+
+config ADC_LOG_LEVEL
+    int
+    depends on LOG
+    default 0 if ADC_LOG_LEVEL_OFF
+    default 1 if ADC_LOG_LEVEL_ERR
+    default 2 if ADC_LOG_LEVEL_WRN
+    default 3 if ADC_LOG_LEVEL_INF
+    default 4 if ADC_LOG_LEVEL_DBG
+
+endmenu
+
+################################################################################
+# BLE_DRIVER module
+
+menu "BLE_DRIVER module"
+
+########################################
+# BLE_DRIVER Logging
+
+choice BLE_DRIVER_LOG_LEVEL_CHOICE
+    prompt "Log level"
+    depends on LOG
+    default BLE_DRIVER_LOG_LEVEL_INF
+    help
+        Message severity threshold for logging. This option controls which
+        severities of messages are displayed and which ones are suppressed.
+        Messages can have 4 severity levels - debug, info, warning, and error -
+        in that order of increasing severity. Messages below the configured
+        severity threshold are suppressed.
+
+config BLE_DRIVER_LOG_LEVEL_OFF
+    bool "Off"
+    help
+        Do not log messages. No messages are displayed. Messages of all severity
+        levels are suppressed.
+
+config BLE_DRIVER_LOG_LEVEL_ERR
+    bool "Error"
+    help
+        Log up to error messages. Error messages are displayed. Warning, info,
+        and debug messages are suppressed.
+
+config BLE_DRIVER_LOG_LEVEL_WRN
+    bool "Warning"
+    help
+        Log up to warning messages. Error and warning messages are displayed.
+        Info and debug messages are suppressed.
+
+config BLE_DRIVER_LOG_LEVEL_INF
+    bool "Info"
+    help
+        Log up to info messages. Error, warning, and info messages are
+        displayed. Debug messages are suppressed.
+
+config BLE_DRIVER_LOG_LEVEL_DBG
+    bool "Debug"
+    help
+        Log up to debug messages. Messages of all severity levels are displayed.
+        No messages are suppressed.
+
+endchoice
+
+config BLE_DRIVER_LOG_LEVEL
+    int
+    depends on LOG
+    default 0 if BLE_DRIVER_LOG_LEVEL_OFF
+    default 1 if BLE_DRIVER_LOG_LEVEL_ERR
+    default 2 if BLE_DRIVER_LOG_LEVEL_WRN
+    default 3 if BLE_DRIVER_LOG_LEVEL_INF
+    default 4 if BLE_DRIVER_LOG_LEVEL_DBG
+
+endmenu
+
+################################################################################

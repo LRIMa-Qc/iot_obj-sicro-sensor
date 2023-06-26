@@ -1,0 +1,30 @@
+description: >
+  Soil humidity sensor definition. 
+  Taking the adc pin and the drys and wet values. acording to the current batterie voltage
+    io-channels: Adc pin of the sensor
+    dry: Value of the sensor when is dry
+    wet: Value of the sensor when is wet
+
+compatible: soil-humidity
+
+include: base.yaml
+
+properties:
+  io-channels:
+    required: true
+    description: Channels of the adc pin of the sensor
+  power-gpios:
+      type: phandle-array
+      description: |
+        Control power to the sensor inputs.
+
+        If present the corresponding GPIO must be set to an active level
+        to enable the divider input.
+  dry:
+    type: array
+    required: true
+    description: The value of the sensor when is dry
+  wet:
+    type: array
+    required: true
+    description: The value of the sensor when is wet
