@@ -1,0 +1,8 @@
+[DEFAULT]
+ws_url = wss://alivecode.ca/iotgateway/
+api_url = https://alivecode.ca/api
+
+[sirco]
+obj_id = id
+auth_token = token
+main = main.py
