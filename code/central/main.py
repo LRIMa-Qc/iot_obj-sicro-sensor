@@ -56,5 +56,4 @@ def send_logs(msg: str):
     sensor_iot.update_doc({ '/doc/logs' : logs })
 
 sensor_iot.on_start(callback=start)
-sensor_iot.on_end(callback=lambda: exit())
 sensor_iot.run()
