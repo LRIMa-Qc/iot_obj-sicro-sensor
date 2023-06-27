@@ -75,6 +75,12 @@ static int ble_encode_pair(uint8_t pos, uint8_t id, float *val) {
 
     RET_IF_ERR(floatSeparator(val, &whole, &decimal), "Unable to separate float");
 
+    /* Encode sign in decimal value*/
+    if(*val < 0) {
+        whole = whole * -1;
+        decimal += 100;
+    }
+
     service_data[pos] = id;
     service_data[pos + 1] = whole;
     service_data[pos + 2] = decimal;

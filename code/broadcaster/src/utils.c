@@ -49,5 +49,7 @@ int floatSeparator(float *val, uint8_t* whole, uint8_t* decimal) {
 	*whole = (int)*val;
 	*decimal = (int)((*val - *whole) * 100);
 
+    if (*decimal < 0) *decimal *= -1;  // Make the decimal part positive
+
     return 0;
 }

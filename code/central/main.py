@@ -29,6 +29,11 @@ def send_data(device:Device):
         whole_val = data_queue.get()
         decimal_val = data_queue.get()
 
+        # Set the negative value
+        if decimal_val > 99:
+            decimal_val = decimal_val - 100
+            whole_val = whole_val * -1
+
         sensors_values[val_id] = whole_val + (decimal_val / 100)
 
     path = f'/doc/{device.index}'
