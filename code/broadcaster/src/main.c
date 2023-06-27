@@ -24,12 +24,29 @@ sensors_data_t sensors_data = {
 	.bat = 0
 };
 
+sensors_data_t last_sensors_data = {
+	.temp = 0,
+	.hum = 0,
+	.lum = 0,
+	.gnd_temp = 0,
+	.gnd_hum = 0,
+	.bat = 0
+};
+
 bool first_run = true;
 
 /**
  * @brief Read the sensors data
  */
 static void read(void) {
+		// Update the last sensors data
+		last_sensors_data.temp = sensors_data.temp;
+		last_sensors_data.hum = sensors_data.hum;
+		last_sensors_data.lum = sensors_data.lum;
+		last_sensors_data.gnd_temp = sensors_data.gnd_temp;
+		last_sensors_data.gnd_hum = sensors_data.gnd_hum;
+		last_sensors_data.bat = sensors_data.bat;
+
 		// Read the temperature and humidity
 		RET_IF_ERR(aht20_read(&sensors_data.temp, &sensors_data.hum), "Unable to read temperature and humidity");
 		// Read the luminosity
@@ -40,6 +57,24 @@ static void read(void) {
 		RET_IF_ERR(ground_humidity_read(&sensors_data.gnd_hum), "Unable to read ground humidity");
 		// Read the battery level
 		RET_IF_ERR(battery_voltage_read(&sensors_data.bat), "Unable to read battery level");
+}
+
+/**
+ * @brief Check if the sensors data should be sent
+ * @return true if the sensors data should be sent, false otherwise
+ */
+static bool should_send(void) {
+	// Check if the data has changed
+	if(sensors_data.temp != last_sensors_data.temp ||
+		sensors_data.hum != last_sensors_data.hum ||
+		sensors_data.lum != last_sensors_data.lum ||
+		sensors_data.gnd_temp != last_sensors_data.gnd_temp ||
+		sensors_data.gnd_hum != last_sensors_data.gnd_hum ||
+		sensors_data.bat != last_sensors_data.bat) {
+			return true;
+	}
+
+	return false;
 }
 
 /**
@@ -76,8 +111,8 @@ void main(void) {
 			first_run = false;
 		}
 
-		// Send the sensors data
-		send();
+		// Send the sensors data if needed
+		if(should_send()) send();
 
 		// Wait
 		k_sleep(K_SECONDS(CONFIG_SENSOR_SLEEP_DURATION_SEC));
