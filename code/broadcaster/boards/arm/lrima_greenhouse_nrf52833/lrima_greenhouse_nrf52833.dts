@@ -79,3 +79,33 @@
 &gpio1 {
     status = "okay";
 };
+
+&uart0 {
+	compatible = "nordic,nrf-uart";
+	status = "disabled";
+	current-speed = <115200>;
+	pinctrl-0 = <&uart0_default>;
+	pinctrl-1 = <&uart0_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+&i2c0 {
+	compatible = "nordic,nrf-twi";
+	status = "okay";
+	pinctrl-0 = <&i2c0_default>;
+	pinctrl-1 = <&i2c0_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	shtc3: shtc3@70 {
+		compatible = "i2c-device";
+		reg = <0x70>;
+		label = "SHTC3";
+	};
+};
+
+&pwm0 {
+	status = "okay";
+	pinctrl-0 = <&pwm0_default>;
+	pinctrl-1 = <&pwm0_sleep>;
+	pinctrl-names = "default", "sleep";
+};
