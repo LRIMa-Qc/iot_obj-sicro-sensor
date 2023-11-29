@@ -37,12 +37,12 @@ def send_data(device:Device):
         sensors_values[val_id] = whole_val + (decimal_val / 100)
 
     print("Values received from device " + str(device.index))
-    print(f("\tTemperature: {sensors_values[1]}"))
-    print(f("\tHumidity: {sensors_values[2]}"))
-    print(f("\tLuminosity: {sensors_values[3]}"))
-    print(f("\tGround temperature: {sensors_values[4]}"))
-    print(f("\tGround humidity: {sensors_values[5]}"))
-    print(f("\tBattery: {sensors_values[254]}"))
+    print(f"\tTemperature: {sensors_values[1]}")
+    print(f"\tHumidity: {sensors_values[2]}")
+    print(f"\tLuminosity: {sensors_values[3]}")
+    print(f"\tGround temperature: {sensors_values[4]}")
+    print(f"\tGround humidity: {sensors_values[5]}")
+    print(f"\tBattery: {sensors_values[254]}")
 
     path = f'/doc/{device.index}'
     sensor_iot.update_doc({
