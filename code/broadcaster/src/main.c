@@ -101,6 +101,8 @@ void main(void) {
 	// Initialize the BLE driver
 	RET_IF_ERR(ble_init(), "Unable to initialize BLE");
 
+	LOG_INF("All drivers initialized");
+
 	while(true) {
 		// Read the sensors data
 		read();

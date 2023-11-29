@@ -24,3 +24,6 @@ CONFIG_CONSOLE=y
 
 # Enable pin control
 CONFIG_PINCTRL=y
+
+# Enbable clock control support #
+CONFIG_CLOCK_CONTROL_NRF_K32SRC_RC=y
