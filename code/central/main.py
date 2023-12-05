@@ -10,7 +10,7 @@ def start():
     '''Main function'''
 
     #Start the serial port reader
-    reader = Reader("/dev/ttyACM0", 115200, send_data, send_logs)
+    reader = Reader("/dev/ttyACM0", 115200, send_data, send_logs, False)
     print("Serial port reader started")
 
 def send_data(device:Device):
