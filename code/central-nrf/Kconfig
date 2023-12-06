@@ -4,6 +4,19 @@
 source "Kconfig.zephyr"
 
 ################################################################################
+# Bluetooth
+
+config BLE_ENABLE_MAC_ADDR_FILTER
+    bool "Enable BLE MAC address filter"
+    help
+        Enable BLE MAC address filter.
+
+config BLE_USER_DEFINED_MAC_ADDR_FILTER
+    string "Filter BLE MAC address not starting with"
+    help
+        This address has to be in this format (e.g.: F0:CA:F0:CA). (Case sensitive)
+
+################################################################################
 # Main module
 
 menu "Main module"

@@ -153,7 +153,10 @@ static void scan_recv(const struct bt_le_scan_recv_info *info,
 	
 	bt_addr_to_str(&info->addr->a, le_addr, sizeof(le_addr)); // Get address
 
+	if(BLE_ENABLE_MAC_ADDR_FILTER &&  strncmp(le_addr, BLE_USER_DEFINED_MAC_ADDR_FILTER, strlen(BLE_USER_DEFINED_MAC_ADDR_FILTER)) != 0) return; // If not the correct address, ignore
+
 	LOG_INF("Received data from %s (%s)\n", le_addr, name);
+
 	send_value(name, le_addr, &svc_data); // Send data to computer
 }
 
