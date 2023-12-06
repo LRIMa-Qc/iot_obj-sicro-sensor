@@ -10,7 +10,7 @@ def start():
     '''Main function'''
 
     #Start the serial port reader
-    reader = Reader("/dev/ttyACM0", 115200, send_data, send_logs)
+    reader = Reader("/dev/ttyACM0", 115200, send_data, send_logs, False)
     print("Serial port reader started")
 
 def send_data(device:Device):
@@ -36,6 +36,14 @@ def send_data(device:Device):
 
         sensors_values[val_id] = whole_val + (decimal_val / 100)
 
+    print("Values received from device " + str(device.index))
+    print(f"\tTemperature: {sensors_values[1]}")
+    print(f"\tHumidity: {sensors_values[2]}")
+    print(f"\tLuminosity: {sensors_values[3]}")
+    print(f"\tGround temperature: {sensors_values[4]}")
+    print(f"\tGround humidity: {sensors_values[5]}")
+    print(f"\tBattery: {sensors_values[254]}")
+
     path = f'/doc/{device.index}'
     sensor_iot.update_doc({
         f'{path}/humidity' : sensors_values[2],
@@ -48,7 +56,6 @@ def send_data(device:Device):
         })
     
 def send_logs(msg: str):
-    logs = sensor_iot.get_doc('/doc/logs')
     
     data = {
         "date":  time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
@@ -57,8 +64,7 @@ def send_logs(msg: str):
 
     print("\033[33m" + f"LOG: {data['date']} - {data['text']}" + "\033[0m")
 
-    logs.append(data)
-    sensor_iot.update_doc({ '/doc/logs' : logs })
+    sensor_iot.update_component('log', data)
 
 sensor_iot.on_start(callback=start)
 sensor_iot.run()

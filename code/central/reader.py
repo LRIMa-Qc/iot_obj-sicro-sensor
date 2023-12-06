@@ -7,13 +7,14 @@ from device import Device
 
 class Reader():
 
-    def __init__(self, port, baudrate, send_data_cb, send_logs_cb) -> None:
+    def __init__(self, port, baudrate, send_data_cb, send_logs_cb, log_all: bool) -> None:
         self.__ser = serial.Serial(port, baudrate)
         self.__send_data_cb = send_data_cb
         self.__send_logs_cb = send_logs_cb
         self.__input_buffer = Queue() 
         self.__devices = {}
         self.__sleep_time = 0.01
+        self.__log_all = log_all
 
         self.__read_thread = Thread(target=self.__read, daemon=True)
         self.__read_thread.start()
@@ -67,7 +68,7 @@ class Reader():
             device = Device(line) # Create a new device from the data
 
             if device.id == -1: # Check if the device is valid
-                self.__send_logs_cb(f"[Error] The device is not valid for line: {line}")
+                if (self.__log_all) : self.__send_logs_cb(f"[Error] The device is not valid for line: {line}")
                 sleep(self.__sleep_time)
                 continue
             
@@ -90,15 +91,15 @@ class Reader():
     def __is_valid(self, data) -> bool:
         '''Check if the data is valid in this format ({name,addr,data})'''
         if data[0] != "{" or data[-1] != "}": # Check if the data has the right format
-            self.__send_logs_cb(f"[Error] The data is not in the right format for line: {data}")
+            if (self.__log_all) : self.__send_logs_cb(f"[Error] The data is not in the right format for line: {data}")
             return False
         
         if data.count("{") > 1 or data.count("}") > 1: # Check if there is more than one {} in the data
-            self.__send_logs_cb(f"[Error] There is more than one {{}} in the data for line: {data}")
+            if (self.__log_all) : self.__send_logs_cb(f"[Error] There is more than one {{}} in the data for line: {data}")
             return False
         
         if data.count(",") != 2: # Check if there is the right amount of commas
-            self.__send_logs_cb(f"[Error] There is not the right amount of commas for line: {data}")
+            if (self.__log_all) : self.__send_logs_cb(f"[Error] There is not the right amount of commas for line: {data}")
             return False
         
         return True
