@@ -56,8 +56,6 @@ def send_data(device:Device):
         })
     
 def send_logs(msg: str):
-    if len(logs) <= 0: # Only get logs if we don't have them yet
-        logs = sensor_iot.get_doc('/doc/logs')
     
     data = {
         "date":  time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
@@ -66,8 +64,7 @@ def send_logs(msg: str):
 
     print("\033[33m" + f"LOG: {data['date']} - {data['text']}" + "\033[0m")
 
-    logs.append(data)
-    sensor_iot.update_doc({ '/doc/logs' : logs })
+    sensor_iot.update_component('log', data)
 
 sensor_iot.on_start(callback=start)
 sensor_iot.run()
