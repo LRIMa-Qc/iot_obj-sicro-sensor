@@ -56,7 +56,8 @@ def send_data(device:Device):
         })
     
 def send_logs(msg: str):
-    logs = sensor_iot.get_doc('/doc/logs')
+    if len(logs) <= 0: # Only get logs if we don't have them yet
+        logs = sensor_iot.get_doc('/doc/logs')
     
     data = {
         "date":  time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
