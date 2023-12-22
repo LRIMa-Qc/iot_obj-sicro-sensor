@@ -25,13 +25,13 @@ There is a protective layer that needs to be applied on the ground part of the p
 #### Broadcaster
 Before building the broadcaster program, you **must** make sure that you changed the `CONFIG_BLE_USER_DEFINED_MAC_ADDR` and the `CONFIG_BT_DEVICE_NAME` so that they are unique. Note that the `CONFIG_BT_DEVICE_NAME` must end with a number. If you need mac address, you can use this [mac address generator](https://dnschecker.org/mac-address-generator.php).
 
-To build the program for the nrf52833 you need to use the [NRFconnect](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-VS-Code) extension in vscode and then you just have to follow the instructions to build it using the `lrima_greenhouse_nrf52833` board. After you need to flash it using the option available in the extension.
+To build the program for the nrf52833 you need to use the [NRFconnect](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-VS-Code) extension in vscode and then you just have to [follow the instructions](https://nrfconnect.github.io/vscode-nrf-connect/get_started/build_app_ncs.html#how-to-build-an-application) to build it using the `lrima_greenhouse_nrf52833` board. After you need to flash it using the [option available in the extension](https://nrfconnect.github.io/vscode-nrf-connect/get_started/quick_debug.html#how-to-flash-an-application).
 
 #### J-Link setup
 ![J-Link setup](doc/img/J-Link-Pin.png)
 
 ### Central-nrf
-To build the program for the nrf52840dongle you need to use the [NRFconnect](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-VS-Code) extension in vscode and then you just have to follow the instrution to build it using the `lrima_greenhouse_nrf52833` board. After you need to flash it using the nrf programer tools available in the nrf Connect for desktop programs. You will need to put the board in [DFU mode](https://infocenter.nordicsemi.com/index.jsp?topic=%2Fug_nrf52840_dongle%2FUG%2Fnrf52840_Dongle%2Fprogramming.html). The file need for the flashing will be under the following path `build\zephyr\zephyr.hex`.
+To build the program for the nrf52840dongle you need to use the [NRFconnect](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-VS-Code) extension in vscode and then you just have to follow the [instrution](https://nrfconnect.github.io/vscode-nrf-connect/get_started/build_app_ncs.html#how-to-build-an-application) to build it using the `lrima_greenhouse_nrf52833` board. After you need to flash it using the nrf programer tools available in the nrf Connect for desktop programs. You will need to put the board in [DFU mode](https://infocenter.nordicsemi.com/index.jsp?topic=%2Fug_nrf52840_dongle%2FUG%2Fnrf52840_Dongle%2Fprogramming.html). The file need for the flashing will be under the following path `build\zephyr\zephyr.hex`.
 
 ### Running
 
