@@ -19,7 +19,8 @@ There is a protective layer that needs to be applied on the ground part of the p
 #### Tools needed
 - VS Code
 - nRF Connect
-- nRF toolkit `v3.5`
+- nRF toolchian `v2.3.0`
+- nRF SDK `v.2.3.0`
 - J-Link
 
 #### Broadcaster
