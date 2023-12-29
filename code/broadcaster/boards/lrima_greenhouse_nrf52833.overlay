@@ -19,8 +19,8 @@
         compatible = "soil-humidity";
         io-channels = <&adc 2>;
         power-gpios = < &gpio1 4 GPIO_ACTIVE_HIGH >;
-        dry = < 800 0 0 >;
-        wet = < 2270 0 0 >;
+        dry = < (-72) 930 (-119) >;
+        wet = < (-1024) 998 (-134) >;
     };
 
     battery_voltage: battery_voltage {
