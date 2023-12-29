@@ -24,6 +24,14 @@
         }                                                                                       \
     }
 
+#define RETRY_IF_ERR(expr, msg) { \
+    int ret = (expr); \
+    if(ret) ret = (expr); \
+    if(ret) { \
+        LOG_ERR("Error %d: " msg " in " LOCATION, ret); \
+    } \
+}
+
 typedef struct {
 	float temp;
 	float hum;
