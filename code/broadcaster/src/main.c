@@ -39,6 +39,8 @@ bool first_run = true;
  * @brief Read the sensors data
  */
 static void read(void) {
+		LOG_INF("Reading sensors data");
+
 		// Update the last sensors data
 		last_sensors_data.temp = sensors_data.temp;
 		last_sensors_data.hum = sensors_data.hum;
@@ -57,6 +59,8 @@ static void read(void) {
 		RET_IF_ERR(ground_humidity_read(&sensors_data.gnd_hum), "Unable to read ground humidity");
 		// Read the battery level
 		RET_IF_ERR(battery_voltage_read(&sensors_data.bat), "Unable to read battery level");
+
+		LOG_INF("All sensors data read");
 }
 
 /**
@@ -71,8 +75,11 @@ static bool should_send(void) {
 		sensors_data.gnd_temp != last_sensors_data.gnd_temp ||
 		sensors_data.gnd_hum != last_sensors_data.gnd_hum ||
 		sensors_data.bat != last_sensors_data.bat) {
+			LOG_INF("Sensors data has changed");
 			return true;
 	}
+
+	LOG_INF("Sensors data has not changed");
 
 	return false;
 }
@@ -81,11 +88,15 @@ static bool should_send(void) {
  * @brief Send the sensors data
  */
 static void send(void) {
+	LOG_INF("Sending sensors data");
+
 	// Encode the data into the service data
 	RET_IF_ERR(ble_encode_adv_data(&sensors_data), "Unable to encode data");
 
 	// Advertise the data
 	RET_IF_ERR(ble_adv(), "Unable to advertise data");
+
+	LOG_INF("Sensors data sent");
 }
 
 /**
@@ -104,19 +115,26 @@ void main(void) {
 	LOG_INF("All drivers initialized");
 
 	while(true) {
+		LOG_INF("Starting a new loop");
+		
 		// Read the sensors data
 		read();
 
 		if(first_run) {
 			// Re read the sensors data to avoid sending wrong data
+			LOG_INF("First run, re reading sensors data");
+
 			read();
 			first_run = false;
 		}
 
 		// Send the sensors data if needed
+		LOG_INF("Checking if the sensors data should be sent");
 		if(should_send()) send();
+		else LOG_INF("Sensors data will not be sent");
 
 		// Wait
+		LOG_INF("Sleeping for %d seconds", CONFIG_SENSOR_SLEEP_DURATION_SEC);
 		k_sleep(K_SECONDS(CONFIG_SENSOR_SLEEP_DURATION_SEC));
 	}
 }
