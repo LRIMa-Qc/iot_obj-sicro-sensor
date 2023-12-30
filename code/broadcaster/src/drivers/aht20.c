@@ -39,6 +39,8 @@ int aht20_init()
     cmdBuff[0] = AHT20_CMD_RESET;
     RET_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 1), "reset failed");
 
+    k_sleep(K_MSEC(10)); /* Wait for the sensor to reset */
+
     cmdBuff[0] = AHT20_CMD_INITIALIZE;
 	RET_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 1), "initialization failed");
 
@@ -49,7 +51,7 @@ int aht20_init()
 	if(!dataBuff[3]) { /* Check if the sensor is calibrated */
 		LOG_INF("Not calibrated, calibrating...");
 		cmdBuff[0] = AHT20_CMD_INITIALIZE;
-		RET_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 1), "initialization failed");
+		RET_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 1), "calibration initialization failed");
 		k_sleep(K_MSEC(10));
 	}
 
@@ -81,7 +83,7 @@ int aht20_read(float *temperature, float *humidity)
     cmdBuff[0] = AHT20_CMD_TRIGGER_MEASURE;
     cmdBuff[1] = AHT20_TRIGGER_MEASURE_BYTE_0;
     cmdBuff[2] = AHT20_TRIGGER_MEASURE_BYTE_1;
-    RET_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 3), "trigger measure failed");
+    RETRY_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 3), "trigger measure failed");
 
     k_sleep(K_MSEC(40));
     while (1) {
