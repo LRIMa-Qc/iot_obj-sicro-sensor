@@ -19,11 +19,13 @@ SET(UTILS_C
 # Add drivers source files
 SET(DRIVERS_H
     src/drivers/aht20.h
+    src/drivers/sht20.h
     src/drivers/adc.h
     src/drivers/ble.h
     )
 SET(DRIVERS_C
     src/drivers/aht20.c
+    src/drivers/sht20.c
     src/drivers/adc.c
     src/drivers/ble.c
     )
