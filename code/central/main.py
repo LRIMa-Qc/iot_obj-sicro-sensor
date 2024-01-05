@@ -1,40 +1,50 @@
 from aliot.aliot_obj import AliotObj
-
+import asyncio
+from bleak import BleakScanner
 from device import Device
-from reader import Reader
+from bleakScanning import BleakScanning
 import time
 
-sensor_iot = AliotObj("sirco")
+sensor_iot = AliotObj("sicro")
 
 def start():
     '''Main function'''
-
-    #Start the serial port reader
-    reader = Reader("/dev/ttyACM0", 115200, send_data, send_logs, False)
-    print("Serial port reader started")
-
+    print("STRAT MAIN")
+    #READING BLEAK
+    reader = BleakScanning(send_data, send_logs, False)
+    reader.start_scanning()
+    
 def send_data(device:Device):
+    device_data=device.data
     sensors_values = {
-        1 : 99.99, # temp
-        2 : 99.99, # hum
-        3 : 99.99, # lum
-        4 : 99.99, # gnd temp
-        5 : 99.99, # gnd hum
-        254 : 99.99 # bat
+    1 : 99.99, # temp
+    2 : 99.99, # hum
+    3 : 99.99, # lum
+    4 : 99.99, # gnd temp
+    5 : 99.99, # gnd hum
+    254 : 99.99 # bat
+    }
+    
+    data_mapping = {
+    1: (3, 4),
+    2: (6, 7),
+    3: (9, 10),
+    4: (12, 13),
+    5: (15, 16),
+    254: (18, 19)
     }
 
-    data_queue = device.getDataQueue()
-    while not data_queue.empty() and data_queue.qsize() >= 3:
-        val_id = data_queue.get()
-        whole_val = data_queue.get()
-        decimal_val = data_queue.get()
+    for sensor, (index1, index2) in data_mapping.items():
+        whole_val = device_data[index1]
+        decimal_val = device_data[index2]
 
         # Set the negative value
         if decimal_val > 99:
             decimal_val = decimal_val - 100
             whole_val = whole_val * -1
 
-        sensors_values[val_id] = whole_val + (decimal_val / 100)
+        sensors_values[sensor] = whole_val + (decimal_val / 100)
+
 
     print("Values received from device " + str(device.index))
     print(f"\tTemperature: {sensors_values[1]}")
@@ -54,9 +64,8 @@ def send_data(device:Device):
         f'{path}/batterie' : sensors_values[254],
         f'{path}/id' : device.id
         })
-    
+
 def send_logs(msg: str):
-    
     data = {
         "date":  time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
         "text": msg
@@ -68,3 +77,4 @@ def send_logs(msg: str):
 
 sensor_iot.on_start(callback=start)
 sensor_iot.run()
+
