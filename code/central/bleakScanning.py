@@ -12,6 +12,7 @@ class BleakScanning():
         self.__sleep_time = 0.01
         self.__input_buffer = Queue() 
         self.__devices = {}
+        self.scanning = False
         self.__log_all = log_all
         self.__send_logs_cb = send_logs_cb
         self.__read_thread = Thread(target=self.__read, daemon=True)
@@ -62,14 +63,23 @@ class BleakScanning():
         
         return True
     
-    async def __read(self):
+    async def __read(self):  
         while True:
-            print("start bleak")
-            scanner = BleakScanner()
-            scanner.register_detection_callback(self.detection_callback)
-            await scanner.start()
-            await asyncio.sleep(10.0)  # Scan for 10 seconds
-            await scanner.stop()
+            try:
+                print("start bleak")
+
+                if not self.scanning:
+                    self.scanning = True
+                    scanner = BleakScanner(detection_callback=self.detection_callback)
+                    await asyncio.gather(scanner.start(), asyncio.sleep(10.0))
+                    await scanner.stop()
+                    self.scanning = False
+
+            except Exception as e:
+                print(f"An error occurred during BLE scanning: {e}")
+
+            # Introduce a delay before starting the next scan
+            await asyncio.sleep(5.0)  # Adjust the delay as needed
 
     def detection_callback(self, device, advertisement_data):
         if device.name is not None and "LRIMa" in device.name:

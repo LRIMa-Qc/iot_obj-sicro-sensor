@@ -6,13 +6,6 @@ from bleakScanning import BleakScanning
 import time
 
 sensor_iot = AliotObj("sicro")
-
-def start():
-    '''Main function'''
-    print("STRAT MAIN")
-    #READING BLEAK
-    reader = BleakScanning(send_data, send_logs, False)
-    reader.start_scanning()
     
 def send_data(device:Device):
     device_data=device.data
@@ -32,7 +25,7 @@ def send_data(device:Device):
     4: (12, 13),
     5: (15, 16),
     254: (18, 19)
-    }
+}
 
     for sensor, (index1, index2) in data_mapping.items():
         whole_val = device_data[index1]
@@ -74,6 +67,13 @@ def send_logs(msg: str):
     print("\033[33m" + f"LOG: {data['date']} - {data['text']}" + "\033[0m")
 
     sensor_iot.update_component('log', data)
+
+def start():
+    '''Main function'''
+    print("START MAIN")
+    # READING BLEAK
+    reader = BleakScanning(send_data, send_logs, False)
+    reader.start_scanning()
 
 sensor_iot.on_start(callback=start)
 sensor_iot.run()
