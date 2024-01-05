@@ -8,29 +8,45 @@ class Device(ABC):
         Create a new device from the data
         
         Args:
-            data (str): The data from the scan (format: {name,addr,service_data})
-        """
-        line = line.strip("{}") # Remove the first and last char
-        val = line.split(",") # Split the string into a list
+            data (str): The data from the scan (format is a Tuples: ('name', 'addr', service_data))
 
-        self.__name = val[0]
-        self.__addr = val[1]
-        self.__data = val[2].split("-") # Split the data into a list
+            name: LRIMa test 1
+            addr: 00:00:00:00:00:00
+            sercice_data: {'0000cdab-0000-1000-8000-00805f9b34fb': b'\\x00\\x95\\x01\\x160\\x02\\x18\\x02\\x03\\x1c6\\x04\\x16\\x15\\x05\\x00\\x00\\xfe\\x02\\\\'}
+            
+        """
+        #GET NAME ADDR AND DATA
+        self.__name = line[0]
+        self.__addr = line[1]
+        self.__data = line[2]
+        
+        #INIT THE ID
         self.__id = -1
 
+        #GET INDEX OF DEVICE
         self.__index = self.__name[-1] #Get last char of the name
         
-        # Check if it's the right service
-        if self.__data[0:2] != ['ab', 'cd']:
-            return None
-        
-        self.__data = self.__data[2:] # Remove the service id
-        self.__data = [int(d, 16) for d in self.__data] # Convert the data from hex to int
-       
-        if self.__data[0] != 0: # Check if the first byte is 0
-            return None
+        #GET UUID AND DATA
+        self.__uuid, self.__byte_data = next(iter(self.__data.items()))
 
-        self.__id = self.__data[1] # Set the id
+        # CHECK IF ITS THE RIGHT SERVICE
+        # Extract the first section before the hyphen
+        first_section_uuid = self.__uuid.split('-')[0]
+
+        # Check if 'a', 'b', 'c', and 'd' are present in the first section
+        validity_uuid = all(letter in first_section_uuid for letter in ['a', 'b', 'c', 'd'])
+        if not validity_uuid:
+            return None 
+        
+        # CONVERT THE DATA FROM BYTES TO INT
+        self.__liste_int_data = list(self.__byte_data)
+
+        # CHECK IF THE FIRST BYTE IS 0
+        if self.__liste_int_data[0] != 0:
+            return None 
+        
+        # SET THE ID
+        self.__id=self.__liste_int_data[1]
     
     @property
     def index(self) -> str:
@@ -43,9 +59,10 @@ class Device(ABC):
         return self.__id
 
     @property
+    #CHANGE ONCE WE FIGURE OUT WHY 0000
     def addr(self) -> str:
         '''Get the mac address of the Device'''
-        return self.__addr
+        return self.__name
 
     @property
     def name(self) -> str:
@@ -55,21 +72,7 @@ class Device(ABC):
     @property
     def data(self) -> int:
         '''Get the data'''
-        return self.__data
-
-    def getDataQueue(self) -> Queue:
-        """Get the queue with the data (the id is removed)"""
-        if len(self.__data) <= 2:
-            return Queue(0)
-        
-        queue = Queue(0)
-
-        # Loop for each ellement
-        for d in self.__data[2:]: # Remove the id
-            queue.put(d)
-
-        return queue
-
+        return self.__liste_int_data
 
     def __eq__(self, __value: object) -> bool:
         """Compare if the two devices are identical"""
