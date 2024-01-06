@@ -41,6 +41,25 @@ typedef struct {
 	float bat;
 } sensors_data_t;
 
+
+/**
+ * @brief A temperature/Humidity Sensor (eg. SHT20/AHT20)
+ * 
+ * @param label Label of the i2c device in the project config
+ * @param address Address of the i2c device
+ * @param initFuncPtr Function to execute the init commands 
+ * @param readFuncPtr Function to execute the read temperature commands
+ */
+typedef struct
+{
+    const char *label;
+    uint8_t address;
+    int (*initFuncPtr)(void);
+    int (*readFuncPtr)(float *temperature, float *humidity);
+} temp_hum_i2c_device;
+
+
+
 float mapRange(float value, float inMin, float inMax, float outMin, float outMax);
 
 float evaluate_polynomial(float x, const int coefficients[3]);

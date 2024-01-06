@@ -21,8 +21,8 @@
 
 #define SHT20_TRIGGER_T_MEASURE_HOLD    0xE3 /* Trigger T measurement Hold master (66ms)*/
 #define SHT20_TRIGGER_T_MEASURE_NOHOLD  0xF3 /* Trigger T measurement No hold master */
-#define SHT20_TRIGGER_RH_MEASURE_HOLD   0xE5 /* Trigger T measurement Hold master (22ms)*/
-#define SHT20_TRIGGER_RH_MEASURE_NOHOLD 0xF5 /* Trigger T measurement No hold master */
+#define SHT20_TRIGGER_RH_MEASURE_HOLD   0xE5 /* Trigger RH measurement Hold master (22ms)*/
+#define SHT20_TRIGGER_RH_MEASURE_NOHOLD 0xF5 /* Trigger RH measurement No hold master */
 
 #define SHT20_SOFT_RESET		     	0xFE /* Reset command (15ms)*/ 
 
