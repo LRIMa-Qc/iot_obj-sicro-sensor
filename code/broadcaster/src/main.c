@@ -35,6 +35,7 @@ sensors_data_t last_sensors_data = {
 
 bool first_run = true;
 
+static uint16_t sleep_time = CONFIG_SENSOR_SLEEP_DURATION_SEC;
 /**
  * @brief Read the sensors data
  */
@@ -50,15 +51,15 @@ static void read(void) {
 		last_sensors_data.bat = sensors_data.bat;
 
 		// Read the temperature and humidity
-		RET_IF_ERR(aht20_read(&sensors_data.temp, &sensors_data.hum), "Unable to read temperature and humidity");
+		LOG_IF_ERR(aht20_read(&sensors_data.temp, &sensors_data.hum), "Unable to read temperature and humidity");
 		// Read the luminosity
-		RET_IF_ERR(luminosity_read(&sensors_data.lum), "Unable to read luminosity");
+		LOG_IF_ERR(luminosity_read(&sensors_data.lum), "Unable to read luminosity");
 		// Read the ground temperature
-		RET_IF_ERR(ground_temperature_read(&sensors_data.gnd_temp), "Unable to read ground temperature");
+		LOG_IF_ERR(ground_temperature_read(&sensors_data.gnd_temp), "Unable to read ground temperature");
 		// Read the ground humidity
-		RET_IF_ERR(ground_humidity_read(&sensors_data.gnd_hum), "Unable to read ground humidity");
+		LOG_IF_ERR(ground_humidity_read(&sensors_data.gnd_hum), "Unable to read ground humidity");
 		// Read the battery level
-		RET_IF_ERR(battery_voltage_read(&sensors_data.bat), "Unable to read battery level");
+		LOG_IF_ERR(battery_voltage_read(&sensors_data.bat), "Unable to read battery level");
 
 		LOG_INF("All sensors data read");
 }
@@ -91,10 +92,10 @@ static void send(void) {
 	LOG_INF("Sending sensors data");
 
 	// Encode the data into the service data
-	RET_IF_ERR(ble_encode_adv_data(&sensors_data), "Unable to encode data");
+	LOG_IF_ERR(ble_encode_adv_data(&sensors_data), "Unable to encode data");
 
 	// Advertise the data
-	RET_IF_ERR(ble_adv(), "Unable to advertise data");
+	LOG_IF_ERR(ble_adv(), "Unable to advertise data");
 
 	LOG_INF("Sensors data sent");
 }
@@ -106,11 +107,11 @@ void main(void) {
 	LOG_INF("Starting application");
 
 	// Initialize the ADC driver
-	RET_IF_ERR(adc_init(), "Unable to initialize ADC");
+	LOG_IF_ERR(adc_init(), "Unable to initialize ADC");
 	// Initialize the AHT20 driver
-	RET_IF_ERR(aht20_init(), "Unable to initialize AHT20");
+	LOG_IF_ERR(aht20_init(), "Unable to initialize AHT20");
 	// Initialize the BLE driver
-	RET_IF_ERR(ble_init(), "Unable to initialize BLE");
+	LOG_IF_ERR(ble_init(&sleep_time), "Unable to initialize BLE");
 
 	LOG_INF("All drivers initialized");
 
@@ -121,20 +122,18 @@ void main(void) {
 		read();
 
 		if(first_run) {
-			// Re read the sensors data to avoid sending wrong data
+			// Re read the sensors data to avoid sending wrong data (the first read is often wrong)
 			LOG_INF("First run, re reading sensors data");
 
 			read();
 			first_run = false;
 		}
 
-		// Send the sensors data if needed
-		LOG_INF("Checking if the sensors data should be sent");
-		if(should_send()) send();
-		else LOG_INF("Sensors data will not be sent");
+		// Send the sensors data
+		send();
 
 		// Wait
-		LOG_INF("Sleeping for %d seconds", CONFIG_SENSOR_SLEEP_DURATION_SEC);
-		k_sleep(K_SECONDS(CONFIG_SENSOR_SLEEP_DURATION_SEC));
+		LOG_INF("Sleeping for %d seconds", sleep_time);
+		k_sleep(K_SECONDS(sleep_time));
 	}
 }

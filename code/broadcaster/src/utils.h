@@ -3,7 +3,7 @@
  * 
  * Utility functions
  * 
- * Author: Nils Lahaye 2023
+ * Author: Nils Lahaye (2024)
  * 
 */
 
@@ -16,7 +16,7 @@
 #define TO_STRING(x) #x
 #define LOCATION __FILE__ ":" TO_STRING(__LINE__)
 
-#define RET_IF_ERR(expr, msg)                                             \
+#define LOG_IF_ERR(expr, msg)                                             \
     {                                                                                         \
         int ret = (expr);                                                              \
         if(ret) {                                                                            \
