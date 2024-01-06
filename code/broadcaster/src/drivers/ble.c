@@ -32,6 +32,14 @@ K_TIMER_DEFINE(advertising_timer, ble_adv_timer_handler, NULL);
     /** Flag to check if we are connected to a device */
     static bool isConnected = false;
 
+    /** Function for when the timer is done*/
+    void ble_conn_timeout_timer_handler(struct k_timer *timer_id) { 
+        isConnected = false; 
+        LOG_WRN("Connection timed out (%ds)", CONFIG_BLE_CONN_TIMEOUT_SEC);
+    }
+    /** Timer for the advertising duration */
+    K_TIMER_DEFINE(conn_timeout_timer, ble_conn_timeout_timer_handler, NULL);
+
     /** Pointer to the sleep time value */
     static uint16_t *sleep_time;
 
@@ -151,6 +159,7 @@ static int ble_encode_pair(uint8_t pos, uint8_t id, float *val) {
         LOG_INF("Connected %s",addr);
 
         isConnected = true;
+        k_timer_start(&conn_timeout_timer, K_SECONDS(CONFIG_BLE_CONN_TIMEOUT_SEC), K_NO_WAIT);
     }
 
     /**
@@ -163,6 +172,7 @@ static int ble_encode_pair(uint8_t pos, uint8_t id, float *val) {
         LOG_INF("Disconnected (reason %u)", reason);
 
         isConnected = false;
+        k_timer_stop(&conn_timeout_timer);
 
         if (adv_time_done) return;
 
@@ -223,6 +233,8 @@ static int ble_encode_pair(uint8_t pos, uint8_t id, float *val) {
 
         *sleep_time = parsed_value;
 
+        k_timer_start(&conn_timeout_timer, K_SECONDS(CONFIG_BLE_CONN_TIMEOUT_SEC), K_NO_WAIT);
+
         return len;
     }
 
@@ -241,6 +253,9 @@ static int ble_encode_pair(uint8_t pos, uint8_t id, float *val) {
                     uint16_t len, uint16_t offset) 
     {
         LOG_INF("Sending sleep time value: %d", *sleep_time);
+
+        k_timer_start(&conn_timeout_timer, K_SECONDS(CONFIG_BLE_CONN_TIMEOUT_SEC), K_NO_WAIT);
+
         return bt_gatt_attr_read(conn, attr, buf, len, offset, sleep_time, sizeof(*sleep_time));
     }
 
@@ -346,6 +361,9 @@ int ble_init(uint16_t *sleep_time_ptr) {
     }
 
     k_timer_init(&advertising_timer, ble_adv_timer_handler, NULL);
+    #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
+        k_timer_init(&conn_timeout_timer, ble_conn_timeout_timer_handler, NULL);
+    #endif
 
     /* Setting sleep time pointer */
     #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED // The sleep time pointer is only needed if the sleep modification is enabled
@@ -368,13 +386,13 @@ int ble_init(uint16_t *sleep_time_ptr) {
     }
 
     #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-    LOG_INF("Setting connectable address");
-    LOG_IF_ERR(bt_addr_le_from_str(CONFIG_BLE_USER_DEFINED_CONN_MAC_ADDR, "random", &addr_connectable), "Unable to convert connectable address");
-    id = bt_id_create(&addr_connectable, NULL);
-    if (id != CONN_DEVICE_ID) {
-        LOG_ERR("Unable to set connectable address");
-        return id;
-    }
+        LOG_INF("Setting connectable address");
+        LOG_IF_ERR(bt_addr_le_from_str(CONFIG_BLE_USER_DEFINED_CONN_MAC_ADDR, "random", &addr_connectable), "Unable to convert connectable address");
+        id = bt_id_create(&addr_connectable, NULL);
+        if (id != CONN_DEVICE_ID) {
+            LOG_ERR("Unable to set connectable address");
+            return id;
+        }
     #endif
 
     /* Setting service UUID */
@@ -458,11 +476,6 @@ int ble_adv(void) {
 
     LOG_INF("Advertising time done");
 
-    if(!isConnected) {
-
-    }
-
-
     #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
         if(isConnected) LOG_INF("Waiting for disconnection");
         while(isConnected) {
@@ -474,6 +487,11 @@ int ble_adv(void) {
     LOG_IF_ERR(ble_stop_adv(), "Unable to stop advertising");
     LOG_INF("Disabling bluetooth");
     LOG_IF_ERR(bt_disable(), "Unable to disable bluetooth");
+
+    k_timer_stop(&advertising_timer);
+    #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
+        k_timer_stop(&conn_timeout_timer);
+    #endif
 
     return 0;
 }
