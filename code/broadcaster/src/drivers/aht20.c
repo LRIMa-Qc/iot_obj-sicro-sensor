@@ -3,7 +3,7 @@
  * 
  * This file is used to define the AHT20 sensor constants and functions.
  * 
- * Author: Nils Lahaye 2023
+ * Author: Nils Lahaye (2024)
  * 
 */
 
@@ -34,24 +34,24 @@ int aht20_init()
 
     LOG_INF("init");
 
-    RET_IF_ERR(!device_is_ready(aht20_spec.bus), "I2C device not ready");
+    LOG_IF_ERR(!device_is_ready(aht20_spec.bus), "I2C device not ready");
 
     cmdBuff[0] = AHT20_CMD_RESET;
-    RET_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 1), "reset failed");
+    LOG_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 1), "reset failed");
 
     k_sleep(K_MSEC(10)); /* Wait for the sensor to reset */
 
     cmdBuff[0] = AHT20_CMD_INITIALIZE;
-	RET_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 1), "initialization failed");
+	LOG_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 1), "initialization failed");
 
 
 	cmdBuff[0] = AHT20_CMD_GET_STATUS;
-	RET_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 1), "get status failed");
+	LOG_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 1), "get status failed");
 
 	if(!dataBuff[3]) { /* Check if the sensor is calibrated */
 		LOG_INF("Not calibrated, calibrating...");
 		cmdBuff[0] = AHT20_CMD_INITIALIZE;
-		RET_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 1), "calibration initialization failed");
+		LOG_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 1), "calibration initialization failed");
 		k_sleep(K_MSEC(10));
 	}
 
@@ -83,11 +83,14 @@ int aht20_read(float *temperature, float *humidity)
     cmdBuff[0] = AHT20_CMD_TRIGGER_MEASURE;
     cmdBuff[1] = AHT20_TRIGGER_MEASURE_BYTE_0;
     cmdBuff[2] = AHT20_TRIGGER_MEASURE_BYTE_1;
-    RETRY_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 3), "trigger measure failed");
+    if(i2c_write_dt(&aht20_spec, cmdBuff, 3) != 0) {
+        LOG_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 3), "trigger measure failed");
+    }
+
 
     k_sleep(K_MSEC(40));
     while (1) {
-        RET_IF_ERR(i2c_read_dt(&aht20_spec, dataBuff, 7), "read failed");
+        LOG_IF_ERR(i2c_read_dt(&aht20_spec, dataBuff, 7), "read failed");
         /* Check if the data is ready */
         if(dataBuff[7]) k_sleep(K_MSEC(5)); 
         else break;

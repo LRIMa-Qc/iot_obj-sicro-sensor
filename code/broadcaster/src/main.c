@@ -1,9 +1,9 @@
-/* main.c - Application main entry point */
-
-/*
- * Copyright (c) 2015-2016 Intel Corporation
- *
- * SPDX-License-Identifier: Apache-2.0
+/**
+ *  main.c - Application main entry point
+ * 
+ * This file contains the main code for the application
+ * 
+ * Author: Nils Lahaye (2024)
  */
 
 #include <zephyr/kernel.h>
@@ -15,6 +15,7 @@
 
 LOG_MODULE_REGISTER(MAIN, CONFIG_MAIN_LOG_LEVEL);
 
+/* Struct to store all of the sensors data*/
 sensors_data_t sensors_data = {
 	.temp = 0,
 	.hum = 0,
@@ -24,31 +25,17 @@ sensors_data_t sensors_data = {
 	.bat = 0
 };
 
-sensors_data_t last_sensors_data = {
-	.temp = 0,
-	.hum = 0,
-	.lum = 0,
-	.gnd_temp = 0,
-	.gnd_hum = 0,
-	.bat = 0
-};
-
+/* Is it the first run */
 bool first_run = true;
 
+/* Sleep time bettwen iterations*/
 static uint16_t sleep_time = CONFIG_SENSOR_SLEEP_DURATION_SEC;
+
 /**
- * @brief Read the sensors data
+ * @brief Read all of the sensors data and store it in the sensors_data variable
  */
 static void read(void) {
 		LOG_INF("Reading sensors data");
-
-		// Update the last sensors data
-		last_sensors_data.temp = sensors_data.temp;
-		last_sensors_data.hum = sensors_data.hum;
-		last_sensors_data.lum = sensors_data.lum;
-		last_sensors_data.gnd_temp = sensors_data.gnd_temp;
-		last_sensors_data.gnd_hum = sensors_data.gnd_hum;
-		last_sensors_data.bat = sensors_data.bat;
 
 		// Read the temperature and humidity
 		LOG_IF_ERR(aht20_read(&sensors_data.temp, &sensors_data.hum), "Unable to read temperature and humidity");
@@ -65,33 +52,12 @@ static void read(void) {
 }
 
 /**
- * @brief Check if the sensors data should be sent
- * @return true if the sensors data should be sent, false otherwise
- */
-static bool should_send(void) {
-	// Check if the data has changed
-	if(sensors_data.temp != last_sensors_data.temp ||
-		sensors_data.hum != last_sensors_data.hum ||
-		sensors_data.lum != last_sensors_data.lum ||
-		sensors_data.gnd_temp != last_sensors_data.gnd_temp ||
-		sensors_data.gnd_hum != last_sensors_data.gnd_hum ||
-		sensors_data.bat != last_sensors_data.bat) {
-			LOG_INF("Sensors data has changed");
-			return true;
-	}
-
-	LOG_INF("Sensors data has not changed");
-
-	return false;
-}
-
-/**
- * @brief Send the sensors data
+ * @brief Send the sensors data to the gateway (Bluetooth)
  */
 static void send(void) {
 	LOG_INF("Sending sensors data");
 
-	// Encode the data into the service data
+	// Encode the data into the service data of the ble driver
 	LOG_IF_ERR(ble_encode_adv_data(&sensors_data), "Unable to encode data");
 
 	// Advertise the data
