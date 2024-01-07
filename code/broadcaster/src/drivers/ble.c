@@ -220,9 +220,9 @@ static int ble_encode_pair(uint8_t pos, uint8_t id, float *val) {
             LOG_WRN("Received sleep time value is too low: %d (seting to 1)", parsed_value);
             parsed_value = 1;
         }
-        else if(parsed_value > CONFIG_SENSOR_SLEEP_DURATION_SEC) {
-            LOG_WRN("Received sleep time value is too high: %d (seting to %d)", parsed_value, CONFIG_SENSOR_SLEEP_DURATION_SEC);
-            parsed_value = CONFIG_SENSOR_SLEEP_DURATION_SEC;
+        else if(parsed_value > CONFIG_SENSOR_SLEEP_DURATION_MAX_SEC) {
+            LOG_WRN("Received sleep time value is too high: %d (seting to %d)", parsed_value, CONFIG_SENSOR_SLEEP_DURATION_MAX_SEC);
+            parsed_value = CONFIG_SENSOR_SLEEP_DURATION_MAX_SEC;
         }
 
         // Update the sleep time value
