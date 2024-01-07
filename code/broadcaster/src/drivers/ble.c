@@ -8,8 +8,6 @@
 */
 
 #include "ble.h"
-#include <zephyr/bluetooth/hci.h>
-#include <zephyr/bluetooth/conn.h>
 
 LOG_MODULE_REGISTER(BLE_DRIVER, CONFIG_BLE_DRIVER_LOG_LEVEL);
 
@@ -461,6 +459,8 @@ int ble_adv(void) {
     // Start the advertising timer
     adv_time_done = false;
     k_timer_start(&advertising_timer, K_SECONDS(CONFIG_BLE_ADV_DURATION_SEC), K_NO_WAIT);
+
+    LOG_IF_ERR(smp_bt_register(), "Unable to register smp_bt");
 
     /* Enable bluetooth */
     LOG_INF("Enabling bluetooth");
