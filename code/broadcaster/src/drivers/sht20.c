@@ -125,28 +125,5 @@ int sht20_read(float *temperature, float *humidity)
 
     LOG_INF("Read done");
 
-    const struct device *dev = device_get_binding("I2C_0");
-    if (!dev)
-    {
-        return;
-    }
-    printf("I2C: Device driver not found.\n");
-
-    uint8_t addr;
-    for (addr = 0x08; addr < 0x78; ++addr)
-    {
-        struct i2c_msg msgs[1];
-        uint8_t dst;
-
-        /* Prepare messages */
-        msgs[0].buf = &dst;
-        msgs[0].len = 0U;
-        msgs[0].flags = I2C_MSG_WRITE | I2C_MSG_STOP;
-
-        if (i2c_transfer(dev, &msgs[0], 1, addr) == 0)
-        {
-            printf("Found device at 0x%02x\n", addr);
-        }
-    }
     return 0;
 }
