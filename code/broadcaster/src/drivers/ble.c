@@ -351,6 +351,20 @@ static void ble_start_adv(int err) {
     return;
 }
 
+/** Callback handler for smp dfu */
+struct mgmt_callback smp_mgmt_cb;
+
+/**
+ * @brief Handle the smp events 
+*/
+int32_t smp_mgmt_cb_handler(uint32_t event, int32_t rc, bool *abort_more, void *data,
+                    size_t data_size)
+{
+    k_timer_start(&conn_timeout_timer, K_SECONDS(CONFIG_BLE_CONN_TIMEOUT_SEC), K_NO_WAIT);
+    LOG_INF("SMP event: %d", event);
+    return MGMT_ERR_EOK;
+}
+
 int ble_init(uint16_t *sleep_time_ptr) {
 
     if(isInisialized) {
@@ -451,30 +465,38 @@ int ble_adv(void) {
         return -1;
     }
 
-    if(!adv_time_done) {
-        LOG_ERR("Advertising time not done");
-        return -2;
-    }
-
     // Start the advertising timer
     adv_time_done = false;
     k_timer_start(&advertising_timer, K_SECONDS(CONFIG_BLE_ADV_DURATION_SEC), K_NO_WAIT);
 
-    LOG_IF_ERR(smp_bt_register(), "Unable to register smp_bt");
+    bool isSMPEnabled = false;
+    if(get_button1_state()){
+        LOG_INF("Button pressed, starting smp");
+        isSMPEnabled = true;
+        LOG_IF_ERR(smp_bt_register(), "Unable to register smp");
+
+        smp_mgmt_cb.callback = smp_mgmt_cb_handler;
+        smp_mgmt_cb.event_id = (MGMT_EVT_OP_CMD_STATUS);
+        mgmt_callback_register(&smp_mgmt_cb);
+
+        led1_on();
+    }
 
     /* Enable bluetooth */
     LOG_INF("Enabling bluetooth");
-    int err = bt_enable(ble_start_adv);
-    if (err) {
-        LOG_ERR("Bluetooth failed to enable (err %d)", err);
-        return err;
-    }
+    LOG_IF_ERR(bt_enable(ble_start_adv), "Unable to enable bluetooth");
 
     while (!adv_time_done) {
             k_sleep(K_MSEC(100));  // Sleep for a short duration while waiting
     }
 
     LOG_INF("Advertising time done");
+
+    if(get_button1_state()) LOG_INF("Button pressed, waiting to stop advertising");
+    while(get_button1_state()) {
+        k_yield();
+        k_sleep(K_MSEC(10));
+    }
 
     #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
         if(isConnected) LOG_INF("Waiting for disconnection");
@@ -488,10 +510,19 @@ int ble_adv(void) {
     LOG_INF("Disabling bluetooth");
     LOG_IF_ERR(bt_disable(), "Unable to disable bluetooth");
 
+    if(isSMPEnabled) {
+        LOG_INF("Unregistering smp");
+        LOG_IF_ERR(smp_bt_unregister(), "Unable to unregister smp");
+        mgmt_callback_unregister(&smp_mgmt_cb);
+    }
+
     k_timer_stop(&advertising_timer);
+    adv_time_done = true;
     #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
         k_timer_stop(&conn_timeout_timer);
     #endif
+
+    led1_off();
 
     return 0;
 }
