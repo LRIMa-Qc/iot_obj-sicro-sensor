@@ -3,7 +3,7 @@
  * 
  * This file will read the adc values from the sensors
  * 
- * Author: Nils Lahaye 2023
+ * Author: Nils Lahaye (2024)
  * 
 */
 #ifndef ADC_H_

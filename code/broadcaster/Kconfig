@@ -9,6 +9,15 @@ config SENSOR_SLEEP_DURATION_SEC
 	int "Sleep duration in seconds bettwen two measurements"
 	default 300
 
+config SENSOR_SLEEP_MODIFICATION_ENABLED
+    bool "Enable sleep duration modification"
+    default y
+
+config SENSOR_SLEEP_DURATION_MAX_SEC
+    depends on SENSOR_SLEEP_MODIFICATION_ENABLED=y
+	int "Maximum sleep duration in seconds bettwen two measurements"
+	default 3600
+
 config BLE_ADV_DURATION_SEC
 	int "Advertising duration in seconds"
 	default 1
@@ -21,10 +30,35 @@ config BLE_MAX_ADV_INTERVAL_MS
 	int "Maximum advertising interval in milliseconds"
 	default 40
 
-config BLE_USER_DEFINED_MAC_ADDR
-	string "Overrides the device's BT address"
+config BLE_CONN_TIMEOUT_SEC
+    int "Connection timeout in seconds"
+    depends on SENSOR_SLEEP_MODIFICATION_ENABLED=y
+    default 60
+    help
+        The connection timeout is the maximum time between two received packets
+        before the connection is considered lost.
+
+config BLE_USER_DEFINED_BROADCAST_MAC_ADDR
+	string "Overrides the device's BT address for advertising"
 	help
 		This address has to be in this format (e.g.: f0:ca:f0:ca:01:d5).
+
+config BLE_USER_DEFINED_CONN_MAC_ADDR
+	string "Overrides the device's BT address for connections"
+    depends on SENSOR_SLEEP_MODIFICATION_ENABLED=y
+	help
+		This address has to be in this format (e.g.: f1:cb:f0:ca:01:d5).
+
+config BLE_USER_DEFINED_BROADCAST_NAME
+    string "Overrides the device's name for advertising"
+    help
+        This name has to be in this format (e.g.: "LRIMa 1").
+
+config BLE_USER_DEFINED_CONN_NAME
+    string "Overrides the device's name for connections"
+    depends on SENSOR_SLEEP_MODIFICATION_ENABLED=y
+    help
+        This name has to be in this format (e.g.: "LRIMa CONN 1").
 ################################################################################
 # Main module
 
