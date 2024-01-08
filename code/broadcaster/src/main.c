@@ -11,6 +11,8 @@
 #include "drivers/adc.h"
 #include "drivers/aht20.h"
 #include "drivers/ble.h"
+#include "drivers/led.h"
+#include "drivers/button.h"
 #include "utils.h"
 
 LOG_MODULE_REGISTER(MAIN, CONFIG_MAIN_LOG_LEVEL);
@@ -30,12 +32,15 @@ bool first_run = true;
 
 /* Sleep time bettwen iterations*/
 static uint16_t sleep_time = CONFIG_SENSOR_SLEEP_DURATION_SEC;
+/* Time spent sleeping */
+static uint16_t sleep_time_spent = 0;
 
 /**
  * @brief Read all of the sensors data and store it in the sensors_data variable
  */
 static void read(void) {
 		LOG_INF("Reading sensors data");
+
 
 		// Read the temperature and humidity
 		LOG_IF_ERR(aht20_read(&sensors_data.temp, &sensors_data.hum), "Unable to read temperature and humidity");
@@ -72,6 +77,10 @@ static void send(void) {
 void main(void) {
 	LOG_INF("Starting application");
 
+	// Initialize the LED driver
+	LOG_IF_ERR(led_init(), "Unable to initialize LED");
+	// Initialize the button driver
+	LOG_IF_ERR(button_init(), "Unable to initialize button");
 	// Initialize the ADC driver
 	LOG_IF_ERR(adc_init(), "Unable to initialize ADC");
 	// Initialize the AHT20 driver
@@ -83,6 +92,7 @@ void main(void) {
 
 	while(true) {
 		LOG_INF("Starting a new loop");
+		k_sleep(K_SECONDS(1));
 		
 		// Read the sensors data
 		read();
@@ -99,7 +109,13 @@ void main(void) {
 		send();
 
 		// Wait
+		sleep_time_spent = 0;
 		LOG_INF("Sleeping for %d seconds", sleep_time);
-		k_sleep(K_SECONDS(sleep_time));
+		while(sleep_time_spent < sleep_time && !get_button1_state()) {
+			k_yield();
+			k_sleep(K_SECONDS(1));
+			sleep_time_spent++;
+		}
+		if(get_button1_state()) LOG_INF("Button pressed, waking up");
 	}
 }

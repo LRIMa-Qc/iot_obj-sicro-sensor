@@ -13,9 +13,17 @@
 #include <zephyr/kernel.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
+#include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/logging/log.h>
+
+#include <zephyr/mgmt/mcumgr/mgmt/mgmt.h>
+#include <zephyr/mgmt/mcumgr/mgmt/callbacks.h> 
+#include <zephyr/mgmt/mcumgr/transport/smp_bt.h>
+
+#include "button.h"
+#include "led.h"
 #include "../utils.h"
 
 
@@ -41,6 +49,7 @@
 
     #define SLEEP_TIME_SERVICE_UUID 0xAFBE
     #define SLEEP_TIME_CHARACTERISTIC_UUID 0xFAEB
+
 
 #endif
 

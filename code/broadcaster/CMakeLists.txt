@@ -21,11 +21,15 @@ SET(DRIVERS_H
     src/drivers/aht20.h
     src/drivers/adc.h
     src/drivers/ble.h
+    src/drivers/button.h
+    src/drivers/led.h
     )
 SET(DRIVERS_C
     src/drivers/aht20.c
     src/drivers/adc.c
     src/drivers/ble.c
+    src/drivers/button.c
+    src/drivers/led.c
     )
 
 
