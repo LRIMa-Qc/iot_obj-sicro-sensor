@@ -480,6 +480,8 @@ int ble_adv(void) {
         mgmt_callback_register(&smp_mgmt_cb);
 
         led1_on();
+
+        k_timer_start(&advertising_timer, K_SECONDS(CONFIG_BLE_DFU_ADV_DURATION_SEC), K_NO_WAIT);
     }
 
     /* Enable bluetooth */

@@ -22,6 +22,11 @@ config BLE_ADV_DURATION_SEC
 	int "Advertising duration in seconds"
 	default 1
 
+config BLE_DFU_ADV_DURATION_SEC
+    int "Advertising duration in seconds for DFU"
+    depends on MCUMGR=y
+    default 60
+
 config BLE_MIN_ADV_INTERVAL_MS
 	int "Minimum advertising interval in milliseconds"
 	default 30
