@@ -88,13 +88,8 @@ int aht20_read(float *temperature, float *humidity)
     }
 
 
-    k_sleep(K_MSEC(40));
-    while (1) {
-        LOG_IF_ERR(i2c_read_dt(&aht20_spec, dataBuff, 7), "read failed");
-        /* Check if the data is ready */
-        if(dataBuff[7]) k_sleep(K_MSEC(5)); 
-        else break;
-    }
+    k_sleep(K_MSEC(80));
+    LOG_IF_ERR(i2c_read_dt(&aht20_spec, dataBuff, 7), "read failed");
 
     humidity_raw = dataBuff[1];
     humidity_raw <<= 8;
