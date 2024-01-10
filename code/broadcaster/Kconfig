@@ -9,9 +9,23 @@ config SENSOR_SLEEP_DURATION_SEC
 	int "Sleep duration in seconds bettwen two measurements"
 	default 300
 
+config SENSOR_SLEEP_MODIFICATION_ENABLED
+    bool "Enable sleep duration modification"
+    default y
+
+config SENSOR_SLEEP_DURATION_MAX_SEC
+    depends on SENSOR_SLEEP_MODIFICATION_ENABLED=y
+	int "Maximum sleep duration in seconds bettwen two measurements"
+	default 3600
+
 config BLE_ADV_DURATION_SEC
 	int "Advertising duration in seconds"
 	default 1
+
+config BLE_DFU_ADV_DURATION_SEC
+    int "Advertising duration in seconds for DFU"
+    depends on MCUMGR=y
+    default 60
 
 config BLE_MIN_ADV_INTERVAL_MS
 	int "Minimum advertising interval in milliseconds"
@@ -21,10 +35,35 @@ config BLE_MAX_ADV_INTERVAL_MS
 	int "Maximum advertising interval in milliseconds"
 	default 40
 
-config BLE_USER_DEFINED_MAC_ADDR
-	string "Overrides the device's BT address"
+config BLE_CONN_TIMEOUT_SEC
+    int "Connection timeout in seconds"
+    depends on SENSOR_SLEEP_MODIFICATION_ENABLED=y
+    default 60
+    help
+        The connection timeout is the maximum time between two received packets
+        before the connection is considered lost.
+
+config BLE_USER_DEFINED_BROADCAST_MAC_ADDR
+	string "Overrides the device's BT address for advertising"
 	help
 		This address has to be in this format (e.g.: f0:ca:f0:ca:01:d5).
+
+config BLE_USER_DEFINED_CONN_MAC_ADDR
+	string "Overrides the device's BT address for connections"
+    depends on SENSOR_SLEEP_MODIFICATION_ENABLED=y
+	help
+		This address has to be in this format (e.g.: f1:cb:f0:ca:01:d5).
+
+config BLE_USER_DEFINED_BROADCAST_NAME
+    string "Overrides the device's name for advertising"
+    help
+        This name has to be in this format (e.g.: "LRIMa 1").
+
+config BLE_USER_DEFINED_CONN_NAME
+    string "Overrides the device's name for connections"
+    depends on SENSOR_SLEEP_MODIFICATION_ENABLED=y
+    help
+        This name has to be in this format (e.g.: "LRIMa CONN 1").
 ################################################################################
 # Main module
 
@@ -270,6 +309,130 @@ config BLE_DRIVER_LOG_LEVEL
     default 2 if BLE_DRIVER_LOG_LEVEL_WRN
     default 3 if BLE_DRIVER_LOG_LEVEL_INF
     default 4 if BLE_DRIVER_LOG_LEVEL_DBG
+
+endmenu
+
+################################################################################
+# Button module
+
+menu "BUTTON module"
+
+########################################
+# BUTTON Logging
+
+choice BUTTON_LOG_LEVEL_CHOICE
+    prompt "Log level"
+    depends on LOG
+    default BUTTON_LOG_LEVEL_INF
+    help
+        Message severity threshold for logging. This option controls which
+        severities of messages are displayed and which ones are suppressed.
+        Messages can have 4 severity levels - debug, info, warning, and error -
+        in that order of increasing severity. Messages below the configured
+        severity threshold are suppressed.
+
+config BUTTON_LOG_LEVEL_OFF
+    bool "Off"
+    help
+        Do not log messages. No messages are displayed. Messages of all severity
+        levels are suppressed.
+
+config BUTTON_LOG_LEVEL_ERR
+    bool "Error"
+    help
+        Log up to error messages. Error messages are displayed. Warning, info,
+        and debug messages are suppressed.
+
+config BUTTON_LOG_LEVEL_WRN
+    bool "Warning"
+    help
+        Log up to warning messages. Error and warning messages are displayed.
+        Info and debug messages are suppressed.
+
+config BUTTON_LOG_LEVEL_INF
+    bool "Info"
+    help
+        Log up to info messages. Error, warning, and info messages are
+        displayed. Debug messages are suppressed.
+
+config BUTTON_LOG_LEVEL_DBG
+    bool "Debug"
+    help
+        Log up to debug messages. Messages of all severity levels are displayed.
+        No messages are suppressed.
+
+endchoice
+
+config BUTTON_LOG_LEVEL
+    int
+    depends on LOG
+    default 0 if BUTTON_LOG_LEVEL_OFF
+    default 1 if BUTTON_LOG_LEVEL_ERR
+    default 2 if BUTTON_LOG_LEVEL_WRN
+    default 3 if BUTTON_LOG_LEVEL_INF
+    default 4 if BUTTON_LOG_LEVEL_DBG
+
+endmenu
+
+################################################################################
+# Led module
+
+menu "LED module"
+
+########################################
+# LED Logging
+
+choice LED_LOG_LEVEL_CHOICE
+    prompt "Log level"
+    depends on LOG
+    default LED_LOG_LEVEL_INF
+    help
+        Message severity threshold for logging. This option controls which
+        severities of messages are displayed and which ones are suppressed.
+        Messages can have 4 severity levels - debug, info, warning, and error -
+        in that order of increasing severity. Messages below the configured
+        severity threshold are suppressed.
+
+config LED_LOG_LEVEL_OFF
+    bool "Off"
+    help
+        Do not log messages. No messages are displayed. Messages of all severity
+        levels are suppressed.
+
+config LED_LOG_LEVEL_ERR
+    bool "Error"
+    help
+        Log up to error messages. Error messages are displayed. Warning, info,
+        and debug messages are suppressed.
+
+config LED_LOG_LEVEL_WRN
+    bool "Warning"
+    help
+        Log up to warning messages. Error and warning messages are displayed.
+        Info and debug messages are suppressed.
+
+config LED_LOG_LEVEL_INF
+    bool "Info"
+    help
+        Log up to info messages. Error, warning, and info messages are
+        displayed. Debug messages are suppressed.
+
+config LED_LOG_LEVEL_DBG
+    bool "Debug"
+    help
+        Log up to debug messages. Messages of all severity levels are displayed.
+        No messages are suppressed.
+
+endchoice
+
+config LED_LOG_LEVEL
+    int
+    depends on LOG
+    default 0 if LED_LOG_LEVEL_OFF
+    default 1 if LED_LOG_LEVEL_ERR
+    default 2 if LED_LOG_LEVEL_WRN
+    default 3 if LED_LOG_LEVEL_INF
+    default 4 if LED_LOG_LEVEL_DBG
 
 endmenu
 
