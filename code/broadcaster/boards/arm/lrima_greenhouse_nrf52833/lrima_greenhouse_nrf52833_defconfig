@@ -11,19 +11,8 @@ CONFIG_ARM_MPU=y
 # Enable hardware stack protection
 CONFIG_HW_STACK_PROTECTION=y
 
-# Enable GPIO
-CONFIG_GPIO=y
-
-# Enable pin reset
-CONFIG_GPIO_AS_PINRESET=y
-
-# Enable RTT
-CONFIG_USE_SEGGER_RTT=y
-CONFIG_RTT_CONSOLE=y
-CONFIG_CONSOLE=y
-
-# Enable pin control
-CONFIG_PINCTRL=y
-
 # Enbable clock control support #
 CONFIG_CLOCK_CONTROL_NRF_K32SRC_RC=y
+
+
+

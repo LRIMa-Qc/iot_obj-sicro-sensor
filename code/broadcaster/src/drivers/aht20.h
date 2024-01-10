@@ -3,7 +3,7 @@
  * 
  * This file is used to define the AHT20 sensor constants and functions.
  * 
- * Author: Nils Lahaye 2023
+ * Author: Nils Lahaye (2024)
  * 
 */
 
