@@ -6,6 +6,13 @@ from bleakScanning import BleakScanning
 import time
 
 sensor_iot = AliotObj("sicro")
+
+
+def handle_change_sleep(data):
+    print("NEW SLEEP TIME : ")
+    print(data)
+    reader.updated_devices = []
+    reader.new_sleep_value = data
     
 def send_data(device:Device):
     device_data=device.data
@@ -68,13 +75,18 @@ def send_logs(msg: str):
 
     sensor_iot.update_component('log', data)
 
+
 def start():
     '''Main function'''
     print("START MAIN")
+    reader.new_sleep_value = sensor_iot.get_doc('/doc/sleep_time')
+
     # READING BLEAK
-    reader = BleakScanning(send_data, send_logs, False)
     reader.start_scanning()
 
-sensor_iot.on_start(callback=start)
-sensor_iot.run()
+reader = BleakScanning(send_data, send_logs, False)
 
+sensor_iot.on_start(callback=start)
+sensor_iot.on_action_recv(action_id='change_sleep_time', callback=handle_change_sleep)
+sensor_iot.run()
+# start()

@@ -1,8 +1,9 @@
 import asyncio
-from bleak import BleakScanner
+from bleak import BleakClient, BleakScanner
 from threading import Thread
 from time import sleep
 from queue import Queue
+
 
 from device import Device
 
@@ -12,6 +13,9 @@ class BleakScanning():
         self.__sleep_time = 0.01
         self.__input_buffer = Queue() 
         self.__devices = {}
+        self.updated_devices = []
+        self.new_sleep_value = 0
+
         self.scanning = False
         self.__log_all = log_all
         self.__send_logs_cb = send_logs_cb
@@ -28,7 +32,7 @@ class BleakScanning():
                 continue
             line = self.__input_buffer.get(0) # Get the data from the input buffer
 
-            print("\033[32mDATA: {}\033[0m".format(line))
+            # print("\033[32mDATA: {}\033[0m".format(line))
             device = Device(line)
 
             if device.id == -1: # Check if the device is valid
@@ -63,29 +67,62 @@ class BleakScanning():
         
         return True
     
-    async def __read(self):  
+    async def _start_scan(self):
+        scanner = BleakScanner(detection_callback=self.detection_callback, adapter="hci0", cb=dict(use_bdaddr=True))
+        try:
+            async with scanner:
+                await scanner.stop()
+                await scanner.start()
+                await asyncio.sleep(30.0)
+                await scanner.stop()
+        except Exception as e:
+            print(f"An error occurred during BLE scanning: {e}")
+
+    async def __read(self):
         while True:
             try:
-                print("start bleak")
-
                 if not self.scanning:
                     self.scanning = True
-                    scanner = BleakScanner(detection_callback=self.detection_callback)
-                    await asyncio.gather(scanner.start(), asyncio.sleep(10.0))
-                    await scanner.stop()
+                    await self._start_scan()
                     self.scanning = False
-
             except Exception as e:
                 print(f"An error occurred during BLE scanning: {e}")
 
-            # Introduce a delay before starting the next scan
-            await asyncio.sleep(5.0)  # Adjust the delay as needed
+            await asyncio.sleep(1.0)
+
+    async def writeCharacteristics(self, device, value):
+        async with BleakClient(device) as client:
+            svcs = client.services
+            
+            for service in svcs:
+                if "afbe" in service.uuid:
+                    # print(service)
+                    for characteristic in service.characteristics:
+                        if "faeb" in characteristic.uuid:
+                                current_value_in_device = int.from_bytes(await client.read_gatt_char(characteristic.uuid), byteorder='little')
+                                print("current sleep value: " + str(current_value_in_device))
+                                if value < 1 or value > 65535: #65535 is the max value for a uint16
+                                    print("Invalid value")
+                                    continue
+                                await client.write_gatt_char(characteristic.uuid, value.to_bytes(2, byteorder="little"), response=True)
+                                print('new sleep value written on ' + device.name + " value : " + str(value))
+
+            
+            
 
     def detection_callback(self, device, advertisement_data):
-        if device.name is not None and "LRIMa" in device.name:
+        if device.name is not None and "LRIMa" in device.name and "LRIMa conn" not in device.name:
+            # print(f"Device: {device.name}, Address: {device.address}, Data: {advertisement_data.service_data}")
             line = (device.name, device.address, advertisement_data.service_data)
-            if self.__is_valid(line): # Check if the data is valid
+            if self.__is_valid(line):
                 self.__input_buffer.put(line)
+        elif device.name is not None and "LRIMa conn" in device.name:
+            # print(f"LRIMACONN Device: {device.name}, Address: {device.address}")
+            if device.address not in self.updated_devices:
+                # asyncio.run(self.writeCharacteristics(device, self.new_sleep_value))
+                asyncio.create_task(self.writeCharacteristics(device, self.new_sleep_value))
+
+                self.updated_devices.append(device.address)
 
     def start_scanning(self):
         loop = asyncio.new_event_loop()
@@ -95,4 +132,3 @@ class BleakScanning():
             loop.run_until_complete(self.__read())
         finally:
             loop.close()
-        
