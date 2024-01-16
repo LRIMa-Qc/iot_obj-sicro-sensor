@@ -56,12 +56,12 @@ def send_data(device:Device):
 
     path = f'/doc/{device.index}'
     sensor_iot.update_doc({
-        f'{path}/humidity' : sensors_values[2],
-        f'{path}/temperature' : sensors_values[1],
-        f'{path}/luminosite' : sensors_values[3],
-        f'{path}/gnd_temperature' : sensors_values[4],
-        f'{path}/gnd_humidity' : sensors_values[5],
-        f'{path}/batterie' : sensors_values[254],
+        f'{path}/humidity' : round(sensors_values[2], 2),
+        f'{path}/temperature' : round(sensors_values[1]),
+        f'{path}/luminosite' : round(sensors_values[3]),
+        f'{path}/gnd_temperature' : round(sensors_values[4]),
+        f'{path}/gnd_humidity' : round(sensors_values[5]),
+        f'{path}/batterie' : round(sensors_values[254]),
         f'{path}/id' : device.id
         })
 
