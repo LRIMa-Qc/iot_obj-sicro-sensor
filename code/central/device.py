@@ -24,7 +24,7 @@ class Device(ABC):
         self.__id = -1
 
         #GET INDEX OF DEVICE
-        self.__index = self.__name[-1] #Get last char of the name
+        self.__index = self.__name[-2:]
         
         #GET UUID AND DATA
         self.__uuid, self.__byte_data = next(iter(self.__data.items()))
