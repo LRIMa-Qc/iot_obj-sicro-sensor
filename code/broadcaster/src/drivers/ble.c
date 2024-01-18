@@ -171,11 +171,7 @@ static int ble_encode_pair(uint8_t pos, uint8_t id, float *val) {
 
         isConnected = false;
         k_timer_stop(&conn_timeout_timer);
-
-        if (adv_time_done) return;
-
-        LOG_INF("Restarting connectable advertising");
-        k_work_submit(&advertising_work); // Restart advertising after disconnection
+        k_timer_stop(&advertising_timer);
     }
 
     /* Define the connections events callbacks*/
