@@ -135,6 +135,7 @@ static int ble_encode_pair(uint8_t pos, uint8_t id, float *val) {
         isConnected = false;
         k_timer_stop(&conn_timeout_timer);
         k_timer_stop(&advertising_timer);
+        adv_time_done = true;
     }
 
     /* Define the connections events callbacks*/
@@ -245,6 +246,8 @@ static void ble_start_adv(int err) {
     counter++; // Increment the advertising counter
 
     LOG_IF_ERR(bt_le_ext_adv_start(ext_adv, BT_LE_EXT_ADV_START_DEFAULT), "Advertising faild to start");
+
+    LOG_INF("Advertising started");
 }
 
 /** Callback handler for smp dfu */
@@ -345,10 +348,6 @@ int ble_adv(void) {
         return -1;
     }
 
-    // Start the advertising timer
-    adv_time_done = false;
-    k_timer_start(&advertising_timer, K_SECONDS(CONFIG_BLE_ADV_DURATION_SEC), K_NO_WAIT);
-
     bool isSMPEnabled = false;
     if(get_button1_state()){
         LOG_INF("Button pressed, starting smp");
@@ -368,8 +367,13 @@ int ble_adv(void) {
     LOG_INF("Enabling bluetooth");
     LOG_IF_ERR(bt_enable(ble_start_adv), "Unable to enable bluetooth");
 
+    // Start the advertising timer
+    adv_time_done = false;
+    k_timer_start(&advertising_timer, K_SECONDS(CONFIG_BLE_ADV_DURATION_SEC), K_NO_WAIT);
+
     while (!adv_time_done) {
-            k_sleep(K_MSEC(100));  // Sleep for a short duration while waiting
+            k_yield();
+            k_sleep(K_MSEC(10));  // Sleep for a short duration while waiting
     }
 
     LOG_INF("Advertising time done");
