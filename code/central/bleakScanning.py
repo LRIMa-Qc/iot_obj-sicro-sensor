@@ -8,12 +8,13 @@ from queue import Queue
 from device import Device
 
 class BleakScanning():
-    def __init__(self, send_data_cb, send_logs_cb, log_all: bool) -> None:
+    def __init__(self, send_data_cb, send_logs_cb, log_all: bool, adapter: str = "hci0") -> None:
         self.__send_data_cb = send_data_cb
         self.__sleep_time = 0.01
         self.__input_buffer = Queue() 
         self.__devices = {}
-        self.updated_devices = []
+        self.__adapter = adapter
+        # self.updated_devices = []
         self.new_sleep_value = 0
 
         self.scanning = False
@@ -68,7 +69,7 @@ class BleakScanning():
         return True
     
     async def _start_scan(self):
-        scanner = BleakScanner(detection_callback=self.detection_callback, adapter="hci0", cb=dict(use_bdaddr=True))
+        scanner = BleakScanner(detection_callback=self.detection_callback, adapter=self.__adapter, cb=dict(use_bdaddr=True))
         try:
             async with scanner:
                 await scanner.stop()
@@ -91,21 +92,34 @@ class BleakScanning():
             await asyncio.sleep(1.0)
 
     async def writeCharacteristics(self, device, value):
-        async with BleakClient(device) as client:
-            svcs = client.services
-            
-            for service in svcs:
-                if "afbe" in service.uuid:
-                    # print(service)
-                    for characteristic in service.characteristics:
-                        if "faeb" in characteristic.uuid:
-                                current_value_in_device = int.from_bytes(await client.read_gatt_char(characteristic.uuid), byteorder='little')
-                                print("current sleep value: " + str(current_value_in_device))
-                                if value < 1 or value > 65535: #65535 is the max value for a uint16
-                                    print("Invalid value")
-                                    continue
-                                await client.write_gatt_char(characteristic.uuid, value.to_bytes(2, byteorder="little"), response=True)
-                                print('new sleep value written on ' + device.name + " value : " + str(value))
+        try:
+            async with BleakClient(device) as client:
+                svcs = client.services
+                
+                for service in svcs:
+                    if "afbe" in service.uuid:
+                        # print(service)
+                        for characteristic in service.characteristics:
+                            if "faeb" in characteristic.uuid:
+                                    current_value_in_device = int.from_bytes(await client.read_gatt_char(characteristic.uuid), byteorder='little')
+                                    # print(device.name + ' : current sleep value : ' + str(current_value_in_device))
+                                    print(f'{device.name:<14} {" - current sleep value :":<20} {str(current_value_in_device)}')
+
+                                    if value < 1 or value > 65535: #65535 is the max value for a uint16
+                                        print("Invalid value")
+                                        continue
+
+                                    if current_value_in_device != value:
+                                        await client.write_gatt_char(characteristic.uuid, value.to_bytes(2, byteorder="little"), response=True)
+                                        # print(device.name + ' :     new sleep value : ' + str(value))
+                                        print(f'{device.name:<14} {" - new sleep value :":<20} {str(value)}')
+
+
+
+        except Exception as e:
+            # print('ERROR in trying to read/write characteristics fun: writeCharacteristics')
+            # print(type(e))
+            pass
 
             
             
@@ -116,13 +130,15 @@ class BleakScanning():
             line = (device.name, device.address, advertisement_data.service_data)
             if self.__is_valid(line):
                 self.__input_buffer.put(line)
-        elif device.name is not None and "LRIMa conn" in device.name:
+            asyncio.create_task(self.writeCharacteristics(device, self.new_sleep_value))
+            
+        # elif device.name is not None and "LRIMa conn" in device.name:
             # print(f"LRIMACONN Device: {device.name}, Address: {device.address}")
-            if device.address not in self.updated_devices:
+            # if device.name not in self.updated_devices:
                 # asyncio.run(self.writeCharacteristics(device, self.new_sleep_value))
-                asyncio.create_task(self.writeCharacteristics(device, self.new_sleep_value))
+            ####asyncio.create_task(self.writeCharacteristics(device, self.new_sleep_value))
 
-                self.updated_devices.append(device.address)
+            # self.updated_devices.append(device.name)
 
     def start_scanning(self):
         loop = asyncio.new_event_loop()
@@ -132,3 +148,4 @@ class BleakScanning():
             loop.run_until_complete(self.__read())
         finally:
             loop.close()
+            

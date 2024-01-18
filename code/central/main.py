@@ -43,7 +43,7 @@ def send_data(device:Device):
             decimal_val = decimal_val - 100
             whole_val = whole_val * -1
 
-        sensors_values[sensor] = whole_val + (decimal_val / 100)
+        sensors_values[sensor] = round(whole_val + (decimal_val / 100), 2)
 
 
     print("Values received from device " + str(device.index))
@@ -56,12 +56,12 @@ def send_data(device:Device):
 
     path = f'/doc/{device.index}'
     sensor_iot.update_doc({
-        f'{path}/humidity' : round(sensors_values[2], 2),
-        f'{path}/temperature' : round(sensors_values[1], 2),
-        f'{path}/luminosite' : round(sensors_values[3], 2),
-        f'{path}/gnd_temperature' : round(sensors_values[4], 2),
-        f'{path}/gnd_humidity' : round(sensors_values[5], 2),
-        f'{path}/batterie' : round(sensors_values[254], 2),
+        f'{path}/humidity' : sensors_values[2],
+        f'{path}/temperature' : sensors_values[1],
+        f'{path}/luminosite' : sensors_values[3],
+        f'{path}/gnd_temperature' : sensors_values[4],
+        f'{path}/gnd_humidity' : sensors_values[5],
+        f'{path}/batterie' : sensors_values[254],
         f'{path}/id' : device.id
         })
 
@@ -88,5 +88,12 @@ reader = BleakScanning(send_data, send_logs, False)
 
 sensor_iot.on_start(callback=start)
 sensor_iot.on_action_recv(action_id='change_sleep_time', callback=handle_change_sleep)
-sensor_iot.run()
+
+try:
+    sensor_iot.run()
+# except KeyboardInterrupt as e:
+    # pass
+except Exception as e:
+    print(e)
+
 # start()
