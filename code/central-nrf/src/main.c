@@ -392,8 +392,8 @@ void main(void)
 	LOG_IF_ERR(uart_callback_set(uart1, uart_cb, NULL), "UART callback not set\n"); // Set UART callback
 	LOG_INF("UART callback set\n");
 
-	LOG_IF_ERR(uart_rx_enable(uart1 ,rx_buf,sizeof rx_buf,RECEIVE_TIMEOUT), "UART RX failed\n"); // Enable UART RX
-	LOG_INF("UART RX enabled\n");
+	// LOG_IF_ERR(uart_rx_enable(uart1 ,rx_buf,sizeof rx_buf,RECEIVE_TIMEOUT), "UART RX failed\n"); // Enable UART RX
+	// LOG_INF("UART RX enabled\n");
 
 	LOG_IF_ERR(bt_enable(NULL), "Bluetooth init failed\n"); // Initialize Bluetooth
 	
