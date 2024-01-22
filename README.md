@@ -43,7 +43,7 @@ The board comes with the option to send over the air updates (ota). To prepare a
 The device is split in two parts, the broadcaster and the connectable. The broadcaster is the part that will send the data to the central. The connectable is the part that will be used to update the firmware over the air and to change the sleep time of the device. The user can wake up the device at any time by pressing the button1. 
 
 ##### Broadcaster
-The broadcaster will send the data at the interval specified in `CONFIG_SENSOR_SLEEP_DURATION_SEC` or at the interval set by the user using the connectable part. The broadcaster will send a beacon using the BLE extended advertising protocol for the duration specified in `CONFIG_BLE_ADV_DURATION_SEC`. The beacon will contain the following information:
+The broadcaster will send the data at the interval specified in `CONFIG_SENSOR_SLEEP_DURATION_SEC` or at the interval set by the user using the connectable part. The broadcaster will send a beacon using the BLE extended advertising protocol (`BLE 5.0`) for the duration specified in `CONFIG_BLE_ADV_DURATION_SEC`. The beacon will contain the following information:
 ![Broadcaster data.](doc/img/broadcaster-data.png)
 
 ##### Connectable

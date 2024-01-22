@@ -43,27 +43,15 @@ config BLE_CONN_TIMEOUT_SEC
         The connection timeout is the maximum time between two received packets
         before the connection is considered lost.
 
-config BLE_USER_DEFINED_BROADCAST_MAC_ADDR
-	string "Overrides the device's BT address for advertising"
+config BLE_USER_DEFINED_MAC_ADDR
+	string "Overrides the device's BT address"
 	help
 		This address has to be in this format (e.g.: f0:ca:f0:ca:01:d5).
 
-config BLE_USER_DEFINED_CONN_MAC_ADDR
-	string "Overrides the device's BT address for connections"
-    depends on SENSOR_SLEEP_MODIFICATION_ENABLED=y
-	help
-		This address has to be in this format (e.g.: f1:cb:f0:ca:01:d5).
-
-config BLE_USER_DEFINED_BROADCAST_NAME
-    string "Overrides the device's name for advertising"
+config BLE_USER_DEFINED_NAME
+    string "Overrides the device's name"
     help
         This name has to be in this format (e.g.: "LRIMa 1").
-
-config BLE_USER_DEFINED_CONN_NAME
-    string "Overrides the device's name for connections"
-    depends on SENSOR_SLEEP_MODIFICATION_ENABLED=y
-    help
-        This name has to be in this format (e.g.: "LRIMa CONN 1").
 ################################################################################
 # Main module
 

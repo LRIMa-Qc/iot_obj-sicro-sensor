@@ -47,53 +47,31 @@ K_TIMER_DEFINE(advertising_timer, ble_adv_timer_handler, NULL);
 static uint8_t service_data[22] = {0};
 
 /** MAC address object for the advertising*/
-static bt_addr_le_t addr_broadcaster;
-#if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-    static bt_addr_le_t addr_connectable;
-#endif
+static bt_addr_le_t addr;
 
-#if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-    /** Work object for the advertising*/
-    static void advertising_work_handle(struct k_work *work);
-    static K_WORK_DEFINE(advertising_work, advertising_work_handle);
-#endif
-
-/** Data to advertise for the broadcaster*/
-static const struct bt_data broadcaster_data[] = {
-	BT_DATA(BT_DATA_SVC_DATA16, service_data, sizeof(service_data)),
-};
-
-#if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-    /** Data to advertise for the connectable device*/
-    static const struct bt_data connectable_data[] = {
+/** Data to advertise for the device*/
+static const struct bt_data adv_data[] = {
+    #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
         BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
         BT_DATA_BYTES(BT_DATA_UUID16_ALL, BT_UUID_16_ENCODE(SLEEP_TIME_SERVICE_UUID)),
-    };
-#endif
-
-/** Array of advertising sets*/
-static struct bt_le_ext_adv *ext_adv[CONFIG_BT_EXT_ADV_MAX_ADV_SET];
+    #endif
+    BT_DATA(BT_DATA_SVC_DATA16, service_data, sizeof(service_data)),
+};
 
 /** Parameters for the broadcaster advertising set*/
-static const struct bt_le_adv_param broadcaster_adv_param = {
-        .id = BROADCAST_DEVICE_ID,
-		.options = (BT_LE_ADV_OPT_EXT_ADV | BT_LE_ADV_OPT_USE_NAME | BT_LE_ADV_OPT_USE_IDENTITY),
+static const struct bt_le_adv_param adv_param = {
+        #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
+		    .options = (BT_LE_ADV_OPT_EXT_ADV | BT_LE_ADV_OPT_USE_NAME | BT_LE_ADV_OPT_USE_IDENTITY | BT_LE_ADV_OPT_CONNECTABLE),
+        #else
+            .options = (BT_LE_ADV_OPT_EXT_ADV | BT_LE_ADV_OPT_USE_NAME | BT_LE_ADV_OPT_USE_IDENTITY),
+        #endif
 		.interval_min = ((uint16_t)(CONFIG_BLE_MIN_ADV_INTERVAL_MS) / 0.625f),
 		.interval_max = ((uint16_t)(CONFIG_BLE_MAX_ADV_INTERVAL_MS) / 0.625f),
 		.secondary_max_skip = 0U,
 		.peer = NULL,
 };
 
-#if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-    /** Parameters for the connectable advertising set*/
-    static const struct bt_le_adv_param connectable_adv_param = {
-            .id = CONN_DEVICE_ID,
-            .options = (BT_LE_ADV_OPT_CONNECTABLE | BT_LE_ADV_OPT_USE_NAME | BT_LE_ADV_OPT_USE_IDENTITY),
-            .interval_min = BT_GAP_ADV_FAST_INT_MIN_2,
-            .interval_max = BT_GAP_ADV_FAST_INT_MAX_2,
-            .peer = NULL,
-    };
-#endif
+static struct bt_le_ext_adv *ext_adv;
 
 /**
  * @brief quickly encode a pair of float values into the service data
@@ -123,21 +101,6 @@ static int ble_encode_pair(uint8_t pos, uint8_t id, float *val) {
 }
 
 #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-
-    /**
-     * @brief Start the connectable advertising
-    */
-    static void connectable_adv_start(void) {
-        LOG_INF("Starting connectable advertising");
-        LOG_IF_ERR(bt_le_ext_adv_start(ext_adv[CONN_DEVICE_ID], BT_LE_EXT_ADV_START_DEFAULT), "Connectable advertising failed to start");
-    }
-
-    /**
-     * @brief Handle the connectable advertising work
-    */
-    static void advertising_work_handle(struct k_work *work) {
-        connectable_adv_start();
-    }
 
     /**
      * @brief Handle the connection event
@@ -171,11 +134,8 @@ static int ble_encode_pair(uint8_t pos, uint8_t id, float *val) {
 
         isConnected = false;
         k_timer_stop(&conn_timeout_timer);
-
-        if (adv_time_done) return;
-
-        LOG_INF("Restarting connectable advertising");
-        k_work_submit(&advertising_work); // Restart advertising after disconnection
+        k_timer_stop(&advertising_timer);
+        adv_time_done = true;
     }
 
     /* Define the connections events callbacks*/
@@ -266,70 +226,7 @@ static int ble_encode_pair(uint8_t pos, uint8_t id, float *val) {
 #endif
 
 /**
- * @brief Create an advertising set
- * 
- * @param adv Pointer to the advertising set object
- * @param param Pointer to the advertising parameters
- * @param ad Pointer to the advertising data
- * @param ad_len Length of the advertising data
- * 
- * @return int 0 if no error, error code otherwise
-*/
-static int advertising_set_create(struct bt_le_ext_adv **adv,
-                    const struct bt_le_adv_param *param,
-                    const struct bt_data *ad, size_t ad_len) 
-{
-    struct bt_le_ext_adv *adv_set;
-
-    LOG_IF_ERR(bt_le_ext_adv_create(param, NULL, adv), "Advertising failed to create");
-
-    adv_set = *adv;
-
-    LOG_IF_ERR(bt_le_ext_adv_set_data(adv_set, ad, ad_len, NULL, 0), "Advertising failed to set data");
-
-    return bt_le_ext_adv_start(adv_set, BT_LE_EXT_ADV_START_DEFAULT);
-}
-
-/**
- * @brief Create the broadcaster advertising set
- * 
- * @return int 0 if no error, error code otherwise
-*/
-static int broadcast_adv_create(void) {
-    LOG_INF("Creating broadcaster advertising #%d", counter);
-
-    LOG_IF_ERR(bt_set_name(BROADCAST_DEVICE_NAME), "Unable to set broadcaster device name");
-
-    LOG_IF_ERR(advertising_set_create(&ext_adv[BROADCAST_DEVICE_ID], &broadcaster_adv_param, 
-                        broadcaster_data, ARRAY_SIZE(broadcaster_data)), "Unable to create broadcaster advertising set");
-    
-    counter++; // Increment the advertising counter
-
-    return 0;
-}
-
-#if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-
-    /**
-     * @brief Create the connectable advertising set
-     * 
-     * @return int 0 if no error, error code otherwise
-    */
-    static int connectable_adv_create(void) {
-        LOG_INF("Creating connectable advertising set");
-
-        LOG_IF_ERR(bt_set_name(CONN_DEVICE_NAME), "Unable to set connectable device name");
-
-        LOG_IF_ERR(advertising_set_create(&ext_adv[CONN_DEVICE_ID], &connectable_adv_param, 
-                            connectable_data, ARRAY_SIZE(connectable_data)), "Unable to create connectable advertising set");
-        
-        return 0;
-    }
-
-#endif
-
-/**
- * @brief Start the broadcaster advertising
+ * @brief Start the advertising
 */
 static void ble_start_adv(int err) {
     if (err) {
@@ -340,15 +237,17 @@ static void ble_start_adv(int err) {
     /* Start advertising */
     LOG_INF("Starting advertising");
 
-    LOG_IF_ERR(broadcast_adv_create(), "Unable to start broadcaster advertising");
+    LOG_IF_ERR(bt_set_name(DEVICE_NAME), "Unable to set broadcaster device name");
 
-    #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
+    LOG_IF_ERR(bt_le_ext_adv_create(&adv_param, NULL, &ext_adv), "Advertising failed to create");
 
-        LOG_IF_ERR(connectable_adv_create(), "Unable to start connectable advertising");
+    LOG_IF_ERR(bt_le_ext_adv_set_data(ext_adv, adv_data, ARRAY_SIZE(adv_data), NULL, 0), "Advertising failed to set data");
 
-    #endif
+    counter++; // Increment the advertising counter
 
-    return;
+    LOG_IF_ERR(bt_le_ext_adv_start(ext_adv, BT_LE_EXT_ADV_START_DEFAULT), "Advertising faild to start");
+
+    LOG_INF("Advertising started");
 }
 
 /** Callback handler for smp dfu */
@@ -389,23 +288,13 @@ int ble_init(uint16_t *sleep_time_ptr) {
 
     LOG_INF("Initializing bluetooth");
 
-    LOG_INF("Setting broadcaster address");
-    LOG_IF_ERR(bt_addr_le_from_str(CONFIG_BLE_USER_DEFINED_BROADCAST_MAC_ADDR, "random", &addr_broadcaster), "Unable to convert broadcaster address");
-    int id = bt_id_create(&addr_broadcaster, NULL);
-    if (id != BROADCAST_DEVICE_ID) {
-        LOG_ERR("Unable to set broadcaster address");
+    LOG_INF("Setting MAC address");
+    LOG_IF_ERR(bt_addr_le_from_str(CONFIG_BLE_USER_DEFINED_MAC_ADDR, "random", &addr), "Unable to convert MAC address");
+    int id = bt_id_create(&addr, NULL);
+    if (id != 0) {
+        LOG_ERR("Unable to set MAC address");
         return id;
     }
-
-    #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-        LOG_INF("Setting connectable address");
-        LOG_IF_ERR(bt_addr_le_from_str(CONFIG_BLE_USER_DEFINED_CONN_MAC_ADDR, "random", &addr_connectable), "Unable to convert connectable address");
-        id = bt_id_create(&addr_connectable, NULL);
-        if (id != CONN_DEVICE_ID) {
-            LOG_ERR("Unable to set connectable address");
-            return id;
-        }
-    #endif
 
     /* Setting service UUID */
     service_data[0] = BROADCAST_SERVICE_UUID_1;
@@ -425,13 +314,7 @@ int ble_stop_adv(void) {
 
     LOG_INF("Stopping advertising");
 
-    for (int i = 0; i < CONFIG_BT_EXT_ADV_MAX_ADV_SET; i++) {
-        if (ext_adv[i] == NULL) continue;
-
-        LOG_INF("Stopping advertising set #%d", i);
-        LOG_IF_ERR(bt_le_ext_adv_stop(ext_adv[i]), "Unable to stop advertising set");
-        ext_adv[i] = NULL;
-    }
+    LOG_IF_ERR(bt_le_ext_adv_stop(ext_adv), "Unable to stop advertising set");
 
     LOG_INF("Advertising stopped");
 
@@ -465,10 +348,6 @@ int ble_adv(void) {
         return -1;
     }
 
-    // Start the advertising timer
-    adv_time_done = false;
-    k_timer_start(&advertising_timer, K_SECONDS(CONFIG_BLE_ADV_DURATION_SEC), K_NO_WAIT);
-
     bool isSMPEnabled = false;
     if(get_button1_state()){
         LOG_INF("Button pressed, starting smp");
@@ -488,8 +367,13 @@ int ble_adv(void) {
     LOG_INF("Enabling bluetooth");
     LOG_IF_ERR(bt_enable(ble_start_adv), "Unable to enable bluetooth");
 
+    // Start the advertising timer
+    adv_time_done = false;
+    k_timer_start(&advertising_timer, K_SECONDS(CONFIG_BLE_ADV_DURATION_SEC), K_NO_WAIT);
+
     while (!adv_time_done) {
-            k_sleep(K_MSEC(100));  // Sleep for a short duration while waiting
+            k_yield();
+            k_sleep(K_MSEC(10));  // Sleep for a short duration while waiting
     }
 
     LOG_INF("Advertising time done");
