@@ -86,14 +86,25 @@ def start():
 
 reader = BleakScanning(send_data, send_logs, False)
 
+# def handle_err(code: str, msg: str):
+#     print("ERROR")
+#     print(code)
+#     print(msg)
+
+def handle_end():
+    print("END")
+
+
 sensor_iot.on_start(callback=start)
 sensor_iot.on_action_recv(action_id='change_sleep_time', callback=handle_change_sleep)
+# sensor_iot.on_err(callback=handle_err)
+sensor_iot.on_end(callback=handle_end)
+sensor_iot.run()
 
-try:
-    sensor_iot.run()
 # except KeyboardInterrupt as e:
     # pass
-except Exception as e:
-    print(e)
+# except Exception as e:
+#     print("ERROR")
+#     print(e)
 
 # start()
