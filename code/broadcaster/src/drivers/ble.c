@@ -60,11 +60,18 @@ static const struct bt_data adv_data[] = {
 
 /** Parameters for the broadcaster advertising set*/
 static const struct bt_le_adv_param adv_param = {
-        #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-		    .options = (BT_LE_ADV_OPT_EXT_ADV | BT_LE_ADV_OPT_USE_NAME | BT_LE_ADV_OPT_USE_IDENTITY | BT_LE_ADV_OPT_CONNECTABLE),
-        #else
-            .options = (BT_LE_ADV_OPT_EXT_ADV | BT_LE_ADV_OPT_USE_NAME | BT_LE_ADV_OPT_USE_IDENTITY),
-        #endif
+        .options = 
+            (
+                  BT_LE_ADV_OPT_EXT_ADV 
+                | BT_LE_ADV_OPT_USE_NAME 
+                | BT_LE_ADV_OPT_USE_IDENTITY 
+            #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
+                | BT_LE_ADV_OPT_CONNECTABLE
+            #endif
+            #if CONFIG_BLE_ADV_USE_CODED_PHY
+                | BT_LE_ADV_OPT_CODED
+            #endif
+            ),
 		.interval_min = ((uint16_t)(CONFIG_BLE_MIN_ADV_INTERVAL_MS) / 0.625f),
 		.interval_max = ((uint16_t)(CONFIG_BLE_MAX_ADV_INTERVAL_MS) / 0.625f),
 		.secondary_max_skip = 0U,

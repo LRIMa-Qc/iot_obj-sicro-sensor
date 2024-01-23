@@ -18,6 +18,16 @@ config SENSOR_SLEEP_DURATION_MAX_SEC
 	int "Maximum sleep duration in seconds bettwen two measurements"
 	default 3600
 
+
+config BLE_ADV_USE_CODED_PHY
+    bool "Use coded PHY for advertising"
+    default n
+    depends on BT_CTLR_PHY_CODED
+    help
+        Use coded PHY for advertising. This will increase the range of the
+        advertising packets. However, it will not be seen by all devices. 
+        Ex : The majority of smartphones do not support coded PHY.
+
 config BLE_ADV_DURATION_SEC
 	int "Advertising duration in seconds"
 	default 1
@@ -52,6 +62,7 @@ config BLE_USER_DEFINED_NAME
     string "Overrides the device's name"
     help
         This name has to be in this format (e.g.: "LRIMa 1").
+
 ################################################################################
 # Main module
 
