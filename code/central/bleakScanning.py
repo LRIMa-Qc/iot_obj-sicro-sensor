@@ -15,13 +15,13 @@ class BleakScanning():
         self.__devices = {}
         self.__adapter = adapter
         # self.updated_devices = []
-        self.new_sleep_value = 0
+        self.new_sleep_value = 5 
 
         self.scanning = False
         self.__log_all = log_all
         self.__send_logs_cb = send_logs_cb
-        self.__read_thread = Thread(target=self.__read, daemon=True)
-        self.__read_thread.start()
+        # self.__read_thread = Thread(target=self.__read, daemon=True)
+        # self.__read_thread.start()
         self.__input_buffer_parser_thread = Thread(target=self.__input_buffer_parser)
         self.__input_buffer_parser_thread.start()
 
@@ -146,6 +146,8 @@ class BleakScanning():
         
         try:
             loop.run_until_complete(self.__read())
+            # loop.create_task(self.__read())
+            # asyncio.create_task(self.__read())
         finally:
             loop.close()
             

@@ -4,6 +4,8 @@ from bleak import BleakScanner
 from device import Device
 from bleakScanning import BleakScanning
 import time
+import os
+import threading
 
 sensor_iot = AliotObj("sicro")
 
@@ -55,7 +57,7 @@ def send_data(device:Device):
     print(f"\tBattery: {sensors_values[254]}")
 
     path = f'/doc/{device.index}'
-    sensor_iot.update_doc({
+    doc_json = {
         f'{path}/humidity' : sensors_values[2],
         f'{path}/temperature' : sensors_values[1],
         f'{path}/luminosite' : sensors_values[3],
@@ -63,7 +65,15 @@ def send_data(device:Device):
         f'{path}/gnd_humidity' : sensors_values[5],
         f'{path}/batterie' : sensors_values[254],
         f'{path}/id' : device.id
-        })
+    }
+
+    if sensor_iot.connected_to_alivecode:
+        sensor_iot.update_doc(doc_json)
+    else:
+        print("Not connected to alivecode, saving to CSV")
+        with open('data.csv', 'a') as f:
+            f.write(f'{time.time()},{device.index},{sensors_values[1]},{sensors_values[2]},{sensors_values[3]},{sensors_values[4]},{sensors_values[5]},{sensors_values[254]}\n')
+    
 
 def send_logs(msg: str):
     data = {
@@ -73,38 +83,34 @@ def send_logs(msg: str):
 
     print("\033[33m" + f"LOG: {data['date']} - {data['text']}" + "\033[0m")
 
-    sensor_iot.update_component('log', data)
+    if sensor_iot.connected_to_alivecode:
+        sensor_iot.update_component('log', data)
+
+    
+
 
 
 def start():
     '''Main function'''
-    print("START MAIN")
+    print("START MAIN ALIOT")
+    # if sensor_iot.connected_to_alivecode:
     reader.new_sleep_value = sensor_iot.get_doc('/doc/sleep_time')
 
-    # READING BLEAK
-    reader.start_scanning()
 
-reader = BleakScanning(send_data, send_logs, False)
-
-# def handle_err(code: str, msg: str):
-#     print("ERROR")
-#     print(code)
-#     print(msg)
-
-def handle_end():
-    print("END")
 
 
 sensor_iot.on_start(callback=start)
+
 sensor_iot.on_action_recv(action_id='change_sleep_time', callback=handle_change_sleep)
-# sensor_iot.on_err(callback=handle_err)
-sensor_iot.on_end(callback=handle_end)
-sensor_iot.run()
 
-# except KeyboardInterrupt as e:
-    # pass
-# except Exception as e:
-#     print("ERROR")
-#     print(e)
 
-# start()
+aliot_thread = threading.Thread(target=sensor_iot.run)
+aliot_thread.start()
+
+
+# READING BLEAK
+
+reader = BleakScanning(send_data, send_logs, False, "hci0")
+
+reader_thread = threading.Thread(target=reader.start_scanning)
+reader_thread.start()
