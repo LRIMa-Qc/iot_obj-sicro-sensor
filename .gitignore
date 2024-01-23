@@ -12,3 +12,5 @@ BLE/central/serreiot/__pycache__/
 *.code-workspace
 
 code/broadcaster/log.log
+
+code/actionneur/include/SECRET.h
