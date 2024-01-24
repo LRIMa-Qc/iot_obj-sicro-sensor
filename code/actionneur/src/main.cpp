@@ -48,6 +48,8 @@ void setupValve1() {
 void setup() {
     Serial.begin(115200);
 
+    aliotObj.setupConfig(AUTH_TOKEN, OBJECT_ID, SSID, PASSWORD);
+
     // Start connection process and listen for events
     aliotObj.run();
 
