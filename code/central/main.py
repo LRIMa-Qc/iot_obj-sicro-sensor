@@ -110,7 +110,8 @@ aliot_thread.start()
 
 # READING BLEAK
 
-reader = BleakScanning(send_data, send_logs, False, "hci0")
+
+reader = BleakScanning(send_data, send_logs, False)
 
 reader_thread = threading.Thread(target=reader.start_scanning)
 reader_thread.start()
