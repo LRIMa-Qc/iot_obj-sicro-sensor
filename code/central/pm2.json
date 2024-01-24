@@ -1,6 +1,6 @@
 {
     "name": "Serre aliot-py",
-    "script": "/home/pi/serre/iot_obj-sicro-sensor/code/central/venv/bin/python",
+    "script": "PATH",
     "args": ["-u", "main.py"],
     "autorestart": true,
     "watch": false,
