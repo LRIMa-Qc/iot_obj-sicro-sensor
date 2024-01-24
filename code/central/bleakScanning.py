@@ -96,7 +96,7 @@ class BleakScanning():
 
             await asyncio.sleep(1.0)
 
-    def get_usb_bluetooth_adapters():
+    def get_usb_bluetooth_adapters(self):
         try:
             # Execute the hciconfig command to get details about Bluetooth adapters
             result = subprocess.run(['hciconfig'], stdout=subprocess.PIPE, text=True)
