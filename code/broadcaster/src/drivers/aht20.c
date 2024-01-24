@@ -34,10 +34,10 @@ int aht20_init()
 
     LOG_INF("init");
 
-    LOG_IF_ERR(!device_is_ready(aht20_spec.bus), "I2C device not ready");
+    RET_IF_ERR(!device_is_ready(aht20_spec.bus), "I2C device not ready");
 
     cmdBuff[0] = AHT20_CMD_RESET;
-    LOG_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 1), "reset failed");
+    RET_IF_ERR(i2c_write_dt(&aht20_spec, cmdBuff, 1), "reset failed");
 
     k_sleep(K_MSEC(10)); /* Wait for the sensor to reset */
 

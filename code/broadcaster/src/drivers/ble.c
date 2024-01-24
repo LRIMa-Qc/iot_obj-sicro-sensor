@@ -296,7 +296,7 @@ int ble_init(uint16_t *sleep_time_ptr) {
     LOG_INF("Initializing bluetooth");
 
     LOG_INF("Setting MAC address");
-    LOG_IF_ERR(bt_addr_le_from_str(CONFIG_BLE_USER_DEFINED_MAC_ADDR, "random", &addr), "Unable to convert MAC address");
+    RET_IF_ERR(bt_addr_le_from_str(CONFIG_BLE_USER_DEFINED_MAC_ADDR, "random", &addr), "Unable to convert MAC address");
     int id = bt_id_create(&addr, NULL);
     if (id != 0) {
         LOG_ERR("Unable to set MAC address");

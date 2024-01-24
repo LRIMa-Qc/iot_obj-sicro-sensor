@@ -48,20 +48,20 @@ int adc_init() {
     LOG_INF("init");
 
     /* Init ground humidity sensor */
-    LOG_IF_ERR(!device_is_ready(hum_adc_spec.dev), "Ground humidity ADC device not ready");
-    LOG_IF_ERR(adc_channel_setup_dt(&hum_adc_spec), "Ground humidity ADC channel setup failed");
-    LOG_IF_ERR(gpio_pin_configure_dt(&hum_enable_spec, GPIO_OUTPUT), "Ground humidity GPIO pin configuration failed");
+    RET_IF_ERR(!device_is_ready(hum_adc_spec.dev), "Ground humidity ADC device not ready");
+    RET_IF_ERR(adc_channel_setup_dt(&hum_adc_spec), "Ground humidity ADC channel setup failed");
+    RET_IF_ERR(gpio_pin_configure_dt(&hum_enable_spec, GPIO_OUTPUT), "Ground humidity GPIO pin configuration failed");
     /* Init ground temperature sensor */
-    LOG_IF_ERR(!device_is_ready(temp_adc_spec.dev), "Ground temperature ADC device not ready");
-    LOG_IF_ERR(adc_channel_setup_dt(&temp_adc_spec), "Ground temperature ADC channel setup failed");
-    LOG_IF_ERR(gpio_pin_configure_dt(&temp_enable_spec, GPIO_OUTPUT), "Ground temperature GPIO pin configuration failed");
+    RET_IF_ERR(!device_is_ready(temp_adc_spec.dev), "Ground temperature ADC device not ready");
+    RET_IF_ERR(adc_channel_setup_dt(&temp_adc_spec), "Ground temperature ADC channel setup failed");
+    RET_IF_ERR(gpio_pin_configure_dt(&temp_enable_spec, GPIO_OUTPUT), "Ground temperature GPIO pin configuration failed");
     /* Init luminosity sensor */
-    LOG_IF_ERR(!device_is_ready(pt19_adc_spec.dev), "Luminosity ADC device not ready");
-    LOG_IF_ERR(adc_channel_setup_dt(&pt19_adc_spec), "Luminosity ADC channel setup failed");
-    LOG_IF_ERR(gpio_pin_configure_dt(&pt19_enable_spec, GPIO_OUTPUT), "Luminosity GPIO pin configuration failed");
+    RET_IF_ERR(!device_is_ready(pt19_adc_spec.dev), "Luminosity ADC device not ready");
+    RET_IF_ERR(adc_channel_setup_dt(&pt19_adc_spec), "Luminosity ADC channel setup failed");
+    RET_IF_ERR(gpio_pin_configure_dt(&pt19_enable_spec, GPIO_OUTPUT), "Luminosity GPIO pin configuration failed");
     /* Init battery voltage sensor */
-    LOG_IF_ERR(!device_is_ready(bat_adc_spec.dev), "Battery voltage ADC device not ready");
-    LOG_IF_ERR(adc_channel_setup_dt(&bat_adc_spec), "Battery voltage ADC channel setup failed");
+    RET_IF_ERR(!device_is_ready(bat_adc_spec.dev), "Battery voltage ADC device not ready");
+    RET_IF_ERR(adc_channel_setup_dt(&bat_adc_spec), "Battery voltage ADC channel setup failed");
 
     /* Deactivate power to the sensors */
     LOG_IF_ERR(gpio_pin_set_dt(&hum_enable_spec, 0), "Ground humidity GPIO pin set failed");

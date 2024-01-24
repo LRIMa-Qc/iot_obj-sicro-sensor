@@ -22,7 +22,16 @@
         if(ret) {                                                                            \
             LOG_ERR("Error %d: " msg " in " LOCATION, ret);      \
         }                                                                                       \
-    }
+    }                                                                   \
+
+#define RET_IF_ERR(expr, msg)                                             \
+    {                                                                                         \
+        int ret = (expr);                                                              \
+        if(ret) {                                                                            \
+            LOG_ERR("Error %d: " msg " in " LOCATION, ret);      \
+            return ret;                                                                     \
+        }                                                                                       \
+    }                                                               \
 
 /** Struct definition for the sensors data*/
 typedef struct {

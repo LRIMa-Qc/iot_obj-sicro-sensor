@@ -10,6 +10,8 @@
 #include <zephyr/logging/log.h>
 #include "drivers/adc.h"
 #include "drivers/aht20.h"
+#include "drivers/sht20.h"
+#include "drivers/sht31.h"
 #include "drivers/ble.h"
 #include "drivers/led.h"
 #include "drivers/button.h"
@@ -35,15 +37,18 @@ static uint16_t sleep_time = CONFIG_SENSOR_SLEEP_DURATION_SEC;
 /* Time spent sleeping */
 static uint16_t sleep_time_spent = 0;
 
+//Pointer to the current i2c temperature and humidity sensor
+static int (*ptr_temp_hum_read)(float *, float *);
+
 /**
  * @brief Read all of the sensors data and store it in the sensors_data variable
  */
 static void read(void) {
 		LOG_INF("Reading sensors data");
 
-
 		// Read the temperature and humidity
-		LOG_IF_ERR(aht20_read(&sensors_data.temp, &sensors_data.hum), "Unable to read temperature and humidity");
+		if (ptr_temp_hum_read != NULL) { LOG_IF_ERR(ptr_temp_hum_read(&sensors_data.temp, &sensors_data.hum), "Unable to read temperature and humidity"); }
+		else LOG_WRN("No temperature and humidity sensor found");
 		// Read the luminosity
 		LOG_IF_ERR(luminosity_read(&sensors_data.lum), "Unable to read luminosity");
 		// Read the ground temperature
@@ -72,6 +77,39 @@ static void send(void) {
 }
 
 /**
+ * @brief Initialize the temperature and humidity sensor
+ * 
+ * @return 0 on success, error code otherwise
+ */
+static int init_temp_hum_sensor(void) {
+	LOG_INF("Initializing temperature and humidity sensor");
+
+	// Try to initialize the AHT20 sensor
+	if(!aht20_init()) {
+		LOG_INF("AHT20 sensor initialized");
+		ptr_temp_hum_read = &aht20_read;
+		return 0;
+	}
+	// Try to initialize the SHT20 sensor
+	if(!sht20_init()) {
+		LOG_INF("SHT20 sensor initialized");
+		ptr_temp_hum_read = &sht20_read;
+		return 0;
+	}
+	// Try to initialize the SHT31 sensor
+	if(!sht31_init()) {
+		LOG_INF("SHT31 sensor initialized");
+		ptr_temp_hum_read = &sht31_read;
+		return 0;
+	}
+
+	// No sensor found
+	LOG_WRN("No temperature and humidity sensor found");
+	ptr_temp_hum_read = NULL;
+	return 1;
+}
+
+/**
  * @brief Main function
  */
 void main(void) {
@@ -84,7 +122,7 @@ void main(void) {
 	// Initialize the ADC driver
 	LOG_IF_ERR(adc_init(), "Unable to initialize ADC");
 	// Initialize the AHT20 driver
-	LOG_IF_ERR(aht20_init(), "Unable to initialize AHT20");
+	LOG_IF_ERR(init_temp_hum_sensor(), "Unable to initialize temperature and humidity sensor");
 	// Initialize the BLE driver
 	LOG_IF_ERR(ble_init(&sleep_time), "Unable to initialize BLE");
 

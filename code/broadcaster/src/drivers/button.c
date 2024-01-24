@@ -35,13 +35,13 @@ int button_init(void) {
     }
 
     // Configure the button1 pin
-    LOG_IF_ERR(gpio_pin_configure_dt(&button1, GPIO_INPUT), "Unable to configure button1 pin");
+    RET_IF_ERR(gpio_pin_configure_dt(&button1, GPIO_INPUT), "Unable to configure button1 pin");
 
     gpio_pin_interrupt_configure_dt(&button1, GPIO_INT_EDGE_BOTH);
 
     gpio_init_callback(&button1_cb_data, button1_cb, BIT(button1.pin));
 
-    LOG_IF_ERR(gpio_add_callback(button1.port, &button1_cb_data), "Unable to add button1 callback");
+    RET_IF_ERR(gpio_add_callback(button1.port, &button1_cb_data), "Unable to add button1 callback");
 
     is_init = true;
 
