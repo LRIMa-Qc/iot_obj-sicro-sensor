@@ -109,9 +109,10 @@ void setup() {
     // Add callback for valve 2
     aliotObj.onActionRecv(valves[1].actionId, callbackValve2);  // Corrected actionID to actionId
 
-    // Setup valve 1 pin
-    pinMode(valves[0].pin, OUTPUT);
-    pinMode(valves[1].pin, OUTPUT);
+    // Setup valve pin
+    for (int i = 0; i < sizeof(valves) / sizeof(valves[0]); i++) {
+        pinMode(valves[i].pin, OUTPUT);
+    }
 }
 
 void loop() {
