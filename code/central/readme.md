@@ -40,7 +40,7 @@ pm2 startup
 sudo bluetoothctl power on
 ```
 
-### if the above command works, then you can add the following line to the end of the file /etc/rc.local
+### if the above command works, then you can add the following line to the file /etc/rc.local
 
 ```bash
 sudo bluetoothctl power on
