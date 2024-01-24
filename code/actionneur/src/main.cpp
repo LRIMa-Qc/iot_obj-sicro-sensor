@@ -1,48 +1,96 @@
+//=============================================================================================================================
+//=============================================================================================================================
+//! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
+
+// WARNING: If you plan to use this code with more than 1 valve, you need to have a dedicated 5V power supply for the valves
+
+//! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! !
+//=============================================================================================================================
+//=============================================================================================================================
+
+
 #include <AliotObject.h>
 #include <cstring>
 #include "SECRET.h"
 
+long lastMillis = 0;
+long delayMillis = 500; // 0.5 second
+
+bool isSetupDone = false;
+
 // Path for the document
 const char* docPath = "/doc/";
 
-// Entity ID for valve 1
-const char* IDvalve1 = "valve_1";
-const uint8_t pinValve1 = 2;
+// Type def for the valves
+typedef struct {
+    const char* actionId;
+    const uint8_t pin;
+    const bool isPinInverted;
+} Valve;
+
+// Array of valves
+const Valve valves[] = // Changed to an array
+    {
+        {
+            .actionId = "valve_1",
+            .pin = 2,
+            .isPinInverted = true
+        },
+        {
+            .actionId = "valve_2",
+            .pin = 4,
+            .isPinInverted = true
+        }
+    };
 
 // Crate AliotObject instance 
 AliotObject aliotObj = AliotObject();
 
-// Conveet string to a bool
+// Convert string to a bool
 bool stringToBool(const char* str) {
     return std::strcmp(str, "true") == 0;
 }
 
-bool calbackValve1(const char* data) {
+void setValveState(const Valve& valve, bool state) {  // Pass by reference
+    if (valve.isPinInverted) digitalWrite(valve.pin, !state);
+    else digitalWrite(valve.pin, state);
+}
+
+// Function to be called when valve 1 state is changed on ALIVEcode
+bool callbackValve1(const char* data) {
+    
     Serial.print("New valve 1 state:");
     Serial.println(data);
 
-    digitalWrite(pinValve1, stringToBool(data));
+    // Set valve 1 state
+    setValveState(valves[0], stringToBool(data));
 
     return true;
 }
 
-void setupValve1() {
-    Serial.println("Setting up valve 1...");
+// Function to be called when valve 2 state is changed on ALIVEcode
+bool callbackValve2(const char* data) {
+    Serial.print("New valve 2 state:");
+    Serial.println(data);
 
-    // Add callback for valve 1
-    aliotObj.onActionRecv(IDvalve1, calbackValve1);
+    // Set valve 2 state
+    setValveState(valves[1], stringToBool(data));
 
-    // Get valve 1 state
-    String res = aliotObj.getDoc(String(docPath) + String(IDvalve1));
-    bool state = stringToBool(res.c_str());
+    return true;
+}
 
-    // Setup valve 1 pin
-    pinMode(pinValve1, OUTPUT);
-    
-    // Set valve 1 state
-    digitalWrite(pinValve1, state);
+// Update all valves from ALIVEcode
+void updateValveFromServer() {
+    for (int i = 0; i < sizeof(valves) / sizeof(valves[0]); i++) {  // Updated loop condition
+        // Get valve state from ALIVEcode
+        String res = aliotObj.getDoc(String(docPath) + String(valves[i].actionId));
+        bool state = stringToBool(res.c_str());
 
-    Serial.println("Valve 1 setup done (state: " + res + ")");
+        // Set valve state
+        setValveState(valves[i], state);
+
+        Serial.println(valves[i].actionId + String(" state updated (state: ") + res + ")");
+    }
 }
 
 void setup() {
@@ -53,12 +101,41 @@ void setup() {
     // Start connection process and listen for events
     aliotObj.run();
 
-    // Setup valve 1
-    setupValve1();
+    lastMillis = millis(); // Set lastMillis to current millis
+
+    // Add callback for valve 1
+    aliotObj.onActionRecv(valves[0].actionId, callbackValve1);  // Corrected actionID to actionId
+
+    // Add callback for valve 2
+    aliotObj.onActionRecv(valves[1].actionId, callbackValve2);  // Corrected actionID to actionId
+
+    // Setup valve 1 pin
+    pinMode(valves[0].pin, OUTPUT);
+    pinMode(valves[1].pin, OUTPUT);
 }
 
 void loop() {
     aliotObj.loop();
 
-    // Noting to do here
+    // Wait for delayMillis to make sure the connection is established
+    if (millis() - lastMillis > delayMillis && !isSetupDone) {
+        // Get valve state from ALIVEcode
+        updateValveFromServer();
+
+        isSetupDone = true;
+    }
+
+    // If the WiFi is disconnected, we reconnect
+    if (!WiFi.isConnected()) {
+        Serial.println("WiFi disconnected, reconnecting...");
+
+        WiFi.disconnect();
+
+        aliotObj.run();
+
+        lastMillis = millis();
+        isSetupDone = false;
+    }
+
+    // Nothing to do here
 }
