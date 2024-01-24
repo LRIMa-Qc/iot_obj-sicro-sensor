@@ -3,6 +3,7 @@
 ## Repo composition
 ```bash
 code/
+├── actioneur    (esp32 code)
 ├── broadcaster  (sensor code [nrf52833])
 ├── central      (python serial to ALIVEcode)
 └── central-nrf  (BLE reciver [nrf52840dongle])

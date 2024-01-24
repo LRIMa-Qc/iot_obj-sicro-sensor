@@ -90,13 +90,27 @@ void updateValveFromServer() {
         setValveState(valves[i], state);
 
         Serial.println(valves[i].actionId + String(" state updated (state: ") + res + ")");
+
+        // sleep for 0.5 sec
+        lastMillis = millis();
+        while (millis() - lastMillis < delayMillis) {
+            aliotObj.loop();
+        }
     }
+}
+
+// Called when the wifi is connected again
+void onReconnect() {
+    Serial.println("Reconnected to ALIVEcode");
+    updateValveFromServer();
 }
 
 void setup() {
     Serial.begin(115200);
 
     aliotObj.setupConfig(AUTH_TOKEN, OBJECT_ID, SSID, PASSWORD);
+
+    aliotObj.setReconnectCallback(onReconnect);
 
     // Start connection process and listen for events
     aliotObj.run();
@@ -124,18 +138,6 @@ void loop() {
         updateValveFromServer();
 
         isSetupDone = true;
-    }
-
-    // If the WiFi is disconnected, we reconnect
-    if (!WiFi.isConnected()) {
-        Serial.println("WiFi disconnected, reconnecting...");
-
-        WiFi.disconnect();
-
-        aliotObj.run();
-
-        lastMillis = millis();
-        isSetupDone = false;
     }
 
     // Nothing to do here
