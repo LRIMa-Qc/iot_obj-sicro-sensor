@@ -18,6 +18,7 @@ python main.py
 # USING SERVICES
 
 ## 1. For using PM2 as the service manager, modify the file pm2.json to your needs and run the following command
+### NOTE: You must have pm2 installed globally and the venv must be created and the requirements must be installed
 
 ```bash
 pm2 start pm2.json
