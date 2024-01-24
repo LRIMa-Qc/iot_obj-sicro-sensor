@@ -1,6 +1,6 @@
 {
     "name": "Serre aliot-py",
-    "script": "PATH",
+    "script": "NEWPYTHONPATHINVENV",
     "args": ["-u", "main.py"],
     "autorestart": true,
     "watch": false,
