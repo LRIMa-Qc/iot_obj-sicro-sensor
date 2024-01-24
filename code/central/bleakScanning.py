@@ -10,7 +10,7 @@ from queue import Queue
 from device import Device
 
 class BleakScanning():
-    def __init__(self, send_data_cb, send_logs_cb, log_all: bool, adapter: str) -> None:
+    def __init__(self, send_data_cb, send_logs_cb, log_all: bool, adapter: str = "") -> None:
         self.__send_data_cb = send_data_cb
         self.__sleep_time = 0.01
         self.__input_buffer = Queue() 
