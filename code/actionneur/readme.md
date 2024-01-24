@@ -86,9 +86,9 @@ After installing platformio, you need to install the libraries. You can do this 
 - [ArduinoHttpClient](https://www.arduino.cc/reference/arduinohttpclient/)
 
 ### Uploading the code
-You can upload the code to the esp32 by clicking on the `PlatformIO: Upload` button (:arrow_right:) in the bottom left corner of vscode. (You need to have the esp32 connected to your computer)
+You can upload the code to the esp32 by clicking on the `PlatformIO: Upload` button ( :arrow_right: ) in the bottom left corner of vscode. (You need to have the esp32 connected to your computer)
 
 ### Monitoring the serial output
-You can monitor the serial output by clicking on the `PlatformIO: Serial Monitor` button (:electric_plug:) in the bottom left corner of vscode. (You need to have the esp32 connected to your computer)
+You can monitor the serial output by clicking on the `PlatformIO: Serial Monitor` button ( :electric_plug: ) in the bottom left corner of vscode. (You need to have the esp32 connected to your computer)
 
 
