@@ -112,4 +112,16 @@
         reg = <0x38>;
         label = "AHT20";
     };
+
+    sht20: sht20@40{
+        compatible = "i2c-device";
+        reg = <0x40>;
+        label = "SHT20";
+    };
+
+    sht3xd@44 {
+        compatible = "sensirion,sht3xd";
+        reg = <0x44 >;
+        label = "SHT3XD";
+    };
 };
