@@ -1,7 +1,7 @@
 {
     "name": "Serre aliot-py",
     "script": "NEWPYTHONPATHINVENV",
-    "args": ["-u", "main.py"],
+    "args": ["-u", "~/iot_obj-sicro-sensor/code/central/main.py"],
     "autorestart": true,
     "watch": false,
     "max_memory_restart": "200M",
