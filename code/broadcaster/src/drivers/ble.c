@@ -140,6 +140,9 @@ static int ble_encode_pair(uint8_t pos, uint8_t id, float *val) {
         LOG_INF("Disconnected (reason %u)", reason);
 
         isConnected = false;
+
+        if(get_button1_state()) return;
+        
         k_timer_stop(&conn_timeout_timer);
         k_timer_stop(&advertising_timer);
         adv_time_done = true;
