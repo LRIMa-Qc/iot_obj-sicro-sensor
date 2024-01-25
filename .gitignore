@@ -16,3 +16,5 @@ code/broadcaster/log.log
 code/central/__pycache__/
 code/actionneur/include/SECRET.h
 code/central/config.ini
+
+code/central/data.csv
