@@ -4,6 +4,7 @@ from bleak import BleakScanner
 from device import Device
 from bleakScanning import BleakScanning
 import time
+from datetime import datetime
 import os
 import threading
 
@@ -48,13 +49,30 @@ def send_data(device:Device):
         sensors_values[sensor] = round(whole_val + (decimal_val / 100), 2)
 
 
-    print("Values received from device " + str(device.index))
-    print(f"\tTemperature: {sensors_values[1]}")
-    print(f"\tHumidity: {sensors_values[2]}")
-    print(f"\tLuminosity: {sensors_values[3]}")
-    print(f"\tGround temperature: {sensors_values[4]}")
-    print(f"\tGround humidity: {sensors_values[5]}")
-    print(f"\tBattery: {sensors_values[254]}")
+    # print("Values received from device " + str(device.index))
+    # print(f"\tTemperature: {sensors_values[1]}")
+    # print(f"\tHumidity: {sensors_values[2]}")
+    # print(f"\tLuminosity: {sensors_values[3]}")
+    # print(f"\tGround temperature: {sensors_values[4]}")
+    # print(f"\tGround humidity: {sensors_values[5]}")
+    # print(f"\tBattery: {sensors_values[254]}")
+    # datetime object containing current date and time
+    current_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+    # Colors
+    MAGENTA = '\033[95m'
+    CYAN = '\033[96m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[33m'
+    RESET = '\033[0m'
+    RED = '\033[31m'
+    BOLD = '\033[1m'
+
+    # dd/mm/YY H:M:S
+    print(f"{BOLD}{MAGENTA}[{current_time}] {GREEN}ID: {str(device.index)} {RESET}| {YELLOW}T: {sensors_values[1]}°C"\
+          f" {RESET}| {CYAN}H: {sensors_values[2]}% {RESET}| {BLUE}L: {sensors_values[3]}% {RESET}|"\
+          f" {YELLOW}GT: {sensors_values[4]}°C {RESET}| {CYAN}GH: {sensors_values[5]}% {RESET}| {RED}B: {sensors_values[254]}V{RESET}")
 
     path = f'/doc/{device.index}'
     doc_json = {
