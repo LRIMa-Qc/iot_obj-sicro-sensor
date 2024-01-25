@@ -61,18 +61,16 @@ def send_data(device:Device):
 
     # Colors
     MAGENTA = '\033[95m'
-    CYAN = '\033[96m'
-    BLUE = '\033[94m'
+    GRAY = '\033[90m'
     GREEN = '\033[92m'
-    YELLOW = '\033[33m'
     RESET = '\033[0m'
     RED = '\033[31m'
     BOLD = '\033[1m'
 
     # dd/mm/YY H:M:S
-    print(f"{BOLD}{MAGENTA}[{current_time}] {GREEN}ID: {str(device.index)} {RESET}| {YELLOW}T: {sensors_values[1]}°C"\
-          f" {RESET}| {CYAN}H: {sensors_values[2]}% {RESET}| {BLUE}L: {sensors_values[3]}% {RESET}|"\
-          f" {YELLOW}GT: {sensors_values[4]}°C {RESET}| {CYAN}GH: {sensors_values[5]}% {RESET}| {RED}B: {sensors_values[254]}V{RESET}")
+    print(f"{BOLD}{MAGENTA}[{current_time}] {GREEN}ID: {str(device.index)} {RESET}| T: {sensors_values[1]}°C"\
+          f" {GRAY}| H: {sensors_values[2]}% {RESET}| L: {sensors_values[3]}% {GRAY}|"\
+          f" GT: {sensors_values[4]}°C {RESET}| GH: {sensors_values[5]}% | {RED}B: {sensors_values[254]}V{RESET}")
 
     path = f'/doc/{device.index}'
     doc_json = {
