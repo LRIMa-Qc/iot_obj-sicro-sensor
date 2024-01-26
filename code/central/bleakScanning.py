@@ -20,7 +20,7 @@ class BleakScanning():
         else:
             self.__adapter = adapter
         # self.updated_devices = []
-        self.new_sleep_value = 5 
+        self.new_sleep_value = 30
 
         self.scanning = False
         self.__log_all = log_all
