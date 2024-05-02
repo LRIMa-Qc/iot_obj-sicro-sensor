@@ -1,5 +1,7 @@
 # iot_obj-sicro-sensor
 
+Authors : LRIMa (Laboratoire de Recherche Informatique de Maisonneuve)
+
 ## Repo composition
 ```bash
 code/
