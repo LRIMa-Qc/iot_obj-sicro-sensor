@@ -75,6 +75,16 @@ void setup() {
 }
 ```
 
+### Adding controls on AliveCode
+
+1. Create a toggle component
+2. Set the toggle to be controlled by the document with `actionID`
+![controlled image](doc/controlled.png)
+3. Set the Id of the action to the `actionID`
+![ActionID image](doc/actionID.png)
+4. Repeat 1-3 for each relay in the list
+
+
 ### Installing the libraries
 The project uses platformio to manage the libraries. You can install it from [here](https://platformio.org/install/ide?install=vscode).
 After installing platformio, you need to install the libraries. You can do this by opening the project in vscode and clicking on the `PlatformIO: Build` button in the bottom left corner. (The library installation should start automatically)
