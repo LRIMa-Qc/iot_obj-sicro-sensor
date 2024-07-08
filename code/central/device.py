@@ -25,8 +25,10 @@ class Device(ABC):
 
         #GET INDEX OF DEVICE
         self.__index = self.__name[-2:]
-        
+                
         #GET UUID AND DATA
+        if self.__data == {}:
+            return
         self.__uuid, self.__byte_data = next(iter(self.__data.items()))
 
         # CHECK IF ITS THE RIGHT SERVICE
