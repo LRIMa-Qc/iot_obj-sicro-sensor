@@ -6,15 +6,20 @@ from bleakScanning import BleakScanning
 import time
 import os
 import threading
+from datetime import datetime
 
-sensor_iot = AliotObj("sicro")
+sensor_iot = AliotObj("central")
 
 
 def handle_change_sleep(data):
-    print("NEW SLEEP TIME : ")
-    print(data)
     reader.updated_devices = []
-    reader.new_sleep_value = data
+    if data != None:
+        reader.new_sleep_value = data
+    else:
+        reader.new_sleep_value = sensor_iot.get_doc('/doc/sleep_time')
+    print(f"New sleep time: {reader.new_sleep_value}")
+
+        
     
 def send_data(device:Device):
     device_data=device.data
@@ -46,8 +51,7 @@ def send_data(device:Device):
             whole_val = whole_val * -1
 
         sensors_values[sensor] = round(whole_val + (decimal_val / 100), 2)
-
-
+        
     print("Values received from device " + str(device.index))
     print(f"\tTemperature: {sensors_values[1]}")
     print(f"\tHumidity: {sensors_values[2]}")
@@ -93,9 +97,8 @@ def send_logs(msg: str):
 def start():
     '''Main function'''
     print("START MAIN ALIOT")
-    # if sensor_iot.connected_to_alivecode:
-    reader.new_sleep_value = sensor_iot.get_doc('/doc/sleep_time')
-
+    if sensor_iot.connected_to_alivecode:
+        reader.new_sleep_value = sensor_iot.get_doc('/doc/sleep_time')
 
 
 
