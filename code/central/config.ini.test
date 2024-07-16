@@ -1,0 +1,9 @@
+[DEFAULT]
+ws_url = ws://192.168.0.112:8881/iotgateway/
+api_url = http://192.168.0.112:8000/api
+
+[central_local]
+obj_id = 5868eeba-1d4e-4d08-804c-3643382e2df1
+auth_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiQVVUSF9LRVkiLCJvYmplY3RJZCI6IjU4NjhlZWJhLTFkNGUtNGQwOC04MDRjLTM2NDMzODJlMmRmMSIsImlhdCI6MTcxNTAxNzUwMiwiZXhwIjo0ODY4NjE3NTAyfQ.kGGpkhUAwpfdZZ_Bg2E0e1mc4qhy-8DnDmtRxLqvi2s
+main = main.py
+

@@ -5,6 +5,7 @@ from bleak import BleakClient, BleakScanner
 from threading import Thread
 from time import sleep
 from queue import Queue
+import os
 
 
 from device import Device
@@ -36,7 +37,7 @@ class BleakScanning():
             if  self.__input_buffer.empty(): # Check if the input buffer is empty
                 sleep(self.__sleep_time)
                 continue
-            line = self.__input_buffer.get(0) # Get the data from the input buffer
+            line = self.__input_buffer.get(False) # Get the data from the input buffer
 
             # print("\033[32mDATA: {}\033[0m".format(line))
             device = Device(line)
@@ -83,6 +84,7 @@ class BleakScanning():
                 await scanner.stop()
         except Exception as e:
             print(f"An error occurred during BLE scanning: {e}")
+            os.system("sudo reboot")
 
     async def __read(self):
         while True:
@@ -155,6 +157,7 @@ class BleakScanning():
             
 
     def detection_callback(self, device, advertisement_data):
+      
         if device.name is not None and "LRIMa" in device.name and "LRIMa conn" not in device.name:
             # print(f"Device: {device.name}, Address: {device.address}, Data: {advertisement_data.service_data}")
             line = (device.name, device.address, advertisement_data.service_data)

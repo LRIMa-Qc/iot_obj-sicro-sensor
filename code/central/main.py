@@ -1,24 +1,28 @@
 from aliot.aliot_obj import AliotObj
 import asyncio
-from bleak import BleakScanner
 from device import Device
 from bleakScanning import BleakScanning
 import time
 from datetime import datetime
 import os
 import threading
+from datetime import datetime
 
-sensor_iot = AliotObj("sicro")
+sensor_iot = AliotObj("central")
 
 
 def handle_change_sleep(data):
-    print("NEW SLEEP TIME : ")
-    print(data)
-    reader.updated_devices = []
-    reader.new_sleep_value = data
+    # reader.updated_devices = []
+    if data != None:
+        reader.new_sleep_value = data
+    else:
+        reader.new_sleep_value = sensor_iot.get_doc('/doc/sleep_time') or 30
+    print(f"New sleep time: {reader.new_sleep_value}")
+
+        
     
 def send_data(device:Device):
-    device_data=device.data
+    device_data = device.data
     sensors_values = {
     1 : 99.99, # temp
     2 : 99.99, # hum
@@ -109,9 +113,8 @@ def send_logs(msg: str):
 def start():
     '''Main function'''
     print("START MAIN ALIOT")
-    # if sensor_iot.connected_to_alivecode:
-    reader.new_sleep_value = sensor_iot.get_doc('/doc/sleep_time')
-
+    if sensor_iot.connected_to_alivecode:
+        reader.new_sleep_value = sensor_iot.get_doc('/doc/sleep_time') or 30
 
 
 

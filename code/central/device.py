@@ -25,8 +25,10 @@ class Device(ABC):
 
         #GET INDEX OF DEVICE
         self.__index = self.__name[-2:]
-        
+                
         #GET UUID AND DATA
+        if self.__data == {}:
+            return
         self.__uuid, self.__byte_data = next(iter(self.__data.items()))
 
         # CHECK IF ITS THE RIGHT SERVICE
@@ -70,7 +72,7 @@ class Device(ABC):
         return self.__name
 
     @property
-    def data(self) -> int:
+    def data(self) -> list[int]:
         '''Get the data'''
         return self.__liste_int_data
 
