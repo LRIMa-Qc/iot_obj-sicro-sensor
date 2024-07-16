@@ -1,4 +1,6 @@
 import asyncio
+import re
+import subprocess
 from bleak import BleakClient, BleakScanner
 from threading import Thread
 from time import sleep
@@ -9,14 +11,17 @@ import os
 from device import Device
 
 class BleakScanning():
-    def __init__(self, send_data_cb, send_logs_cb, log_all: bool, adapter: str = "hci0") -> None:
+    def __init__(self, send_data_cb, send_logs_cb, log_all: bool, adapter: str = "") -> None:
         self.__send_data_cb = send_data_cb
         self.__sleep_time = 0.01
         self.__input_buffer = Queue() 
         self.__devices = {}
-        self.__adapter = adapter
+        if adapter is None or adapter == "":
+            self.__adapter = self.get_usb_bluetooth_adapters()
+        else:
+            self.__adapter = adapter
         # self.updated_devices = []
-        self.new_sleep_value = 5 
+        self.new_sleep_value = 30
 
         self.scanning = False
         self.__log_all = log_all
@@ -32,7 +37,7 @@ class BleakScanning():
             if  self.__input_buffer.empty(): # Check if the input buffer is empty
                 sleep(self.__sleep_time)
                 continue
-            line = self.__input_buffer.get(0) # Get the data from the input buffer
+            line = self.__input_buffer.get(False) # Get the data from the input buffer
 
             # print("\033[32mDATA: {}\033[0m".format(line))
             device = Device(line)
@@ -93,6 +98,31 @@ class BleakScanning():
 
             await asyncio.sleep(1.0)
 
+    def get_usb_bluetooth_adapters(self):
+        try:
+            # Execute the hciconfig command to get details about Bluetooth adapters
+            result = subprocess.run(['hciconfig'], stdout=subprocess.PIPE, text=True)
+            output = result.stdout
+
+            # Regular expression pattern to match the adapter details
+            adapters_pattern = re.compile(r'^hci\d+:\s+Type:.*?Bus: (\w+)', re.MULTILINE)
+
+            adapters = adapters_pattern.findall(output) # list [USB, UART]
+
+
+            # Regular expression pattern to find "hci" followed by a number
+            hci_pattern = r'hci\d+'
+
+            # Find all matches in the text
+            hci_identifiers = re.findall(hci_pattern, output) # list [hci1, hci0]
+
+            for key, adapter in enumerate(adapters):
+                if adapter == "USB":
+                    return hci_identifiers[key]
+        except Exception as e:
+            print(f"An error occurred while getting USB Bluetooth adapters: {e}")
+            return None
+        
     async def writeCharacteristics(self, device, value):
         try:
             async with BleakClient(device) as client:

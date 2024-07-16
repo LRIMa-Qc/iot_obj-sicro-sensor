@@ -1,9 +1,9 @@
 from aliot.aliot_obj import AliotObj
 import asyncio
-from bleak import BleakScanner
 from device import Device
 from bleakScanning import BleakScanning
 import time
+from datetime import datetime
 import os
 import threading
 from datetime import datetime
@@ -12,17 +12,17 @@ sensor_iot = AliotObj("central")
 
 
 def handle_change_sleep(data):
-    reader.updated_devices = []
+    # reader.updated_devices = []
     if data != None:
         reader.new_sleep_value = data
     else:
-        reader.new_sleep_value = sensor_iot.get_doc('/doc/sleep_time')
+        reader.new_sleep_value = sensor_iot.get_doc('/doc/sleep_time') or 30
     print(f"New sleep time: {reader.new_sleep_value}")
 
         
     
 def send_data(device:Device):
-    device_data=device.data
+    device_data = device.data
     sensors_values = {
     1 : 99.99, # temp
     2 : 99.99, # hum
@@ -51,14 +51,30 @@ def send_data(device:Device):
             whole_val = whole_val * -1
 
         sensors_values[sensor] = round(whole_val + (decimal_val / 100), 2)
-        
-    print("Values received from device " + str(device.index))
-    print(f"\tTemperature: {sensors_values[1]}")
-    print(f"\tHumidity: {sensors_values[2]}")
-    print(f"\tLuminosity: {sensors_values[3]}")
-    print(f"\tGround temperature: {sensors_values[4]}")
-    print(f"\tGround humidity: {sensors_values[5]}")
-    print(f"\tBattery: {sensors_values[254]}")
+
+
+    # print("Values received from device " + str(device.index))
+    # print(f"\tTemperature: {sensors_values[1]}")
+    # print(f"\tHumidity: {sensors_values[2]}")
+    # print(f"\tLuminosity: {sensors_values[3]}")
+    # print(f"\tGround temperature: {sensors_values[4]}")
+    # print(f"\tGround humidity: {sensors_values[5]}")
+    # print(f"\tBattery: {sensors_values[254]}")
+    # datetime object containing current date and time
+    current_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+    # Colors
+    MAGENTA = '\033[95m'
+    GRAY = '\033[90m'
+    GREEN = '\033[92m'
+    RESET = '\033[0m'
+    RED = '\033[31m'
+    BOLD = '\033[1m'
+
+    # dd/mm/YY H:M:S
+    print(f"{BOLD}{MAGENTA}[{current_time}] {GREEN}ID: {str(device.index)} {RESET}| T: {sensors_values[1]}°C"\
+          f" {GRAY}| H: {sensors_values[2]}% {RESET}| L: {sensors_values[3]}% {GRAY}|"\
+          f" GT: {sensors_values[4]}°C {RESET}| GH: {sensors_values[5]}% | {RED}B: {sensors_values[254]}V{RESET}")
 
     path = f'/doc/{device.index}'
     doc_json = {
@@ -98,7 +114,7 @@ def start():
     '''Main function'''
     print("START MAIN ALIOT")
     if sensor_iot.connected_to_alivecode:
-        reader.new_sleep_value = sensor_iot.get_doc('/doc/sleep_time')
+        reader.new_sleep_value = sensor_iot.get_doc('/doc/sleep_time') or 30
 
 
 
@@ -113,7 +129,8 @@ aliot_thread.start()
 
 # READING BLEAK
 
-reader = BleakScanning(send_data, send_logs, False, "hci0")
+
+reader = BleakScanning(send_data, send_logs, False)
 
 reader_thread = threading.Thread(target=reader.start_scanning)
 reader_thread.start()
