@@ -85,7 +85,7 @@ static int init_temp_hum_sensor(void) {
 	LOG_INF("Initializing temperature and humidity sensor");
 
 	// Sleeping for 1000ms to wait for the sensor to wake up
-	k_sleep(1000);
+	k_sleep(K_MSEC(1000));
 
 	// Try to initialize the AHT20 sensor
 	if(!aht20_init()) {
