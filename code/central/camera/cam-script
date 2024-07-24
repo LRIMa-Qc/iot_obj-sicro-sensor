@@ -1,0 +1,27 @@
+#!/bin/sh
+
+set -e
+
+IOT_PATH='/home/pi/iot_obj-sicro-sensor/code/central/'
+. "$IOT_PATH/venv/bin/activate"
+
+DATE_NOW=$(date -I)
+TIME_NOW=$(date +%H-%M-%S)
+
+PHOTO_DIR="/home/pi/camera-data/$DATE_NOW/$TIME_NOW"
+mkdir -p "$PHOTO_DIR"
+
+# Format: ExposureTime-AnalogueGain-ColourGains1_ColorGains2-AutoFocus
+# Autofocus can be: 1 (True) or 0 (False)
+# Put a numeric value or 'auto' (ex: et@10-ag@1-cg@1.0_1.0-af@1, et@auto-ag@auto-cg@1.0_1.0-af@1)
+CONFIGS="
+et@10-ag@1-cg@1.0_1.0-af@1
+"
+
+
+for conf in $CONFIGS; do
+    if [ $conf = "" ]; then 
+        continue
+    fi
+    python3 "$IOT_PATH/camera/main.py" -d "$PHOTO_DIR/$conf" -c $conf
+done
