@@ -13,7 +13,8 @@ float mapRange(float value, float inMin, float inMax, float outMin, float outMax
 }
 
 float evaluate_polynomial(float x, const int coefficients[3]) {
-    return coefficients[0] + coefficients[1] * x + coefficients[2] * x * x;
+    // y = ax^2 + bx + c
+    return coefficients[0] * x * x + coefficients[1] * x + coefficients[2];
 }
 
 int floatSeparator(float *val, uint8_t* whole, uint8_t* decimal) {

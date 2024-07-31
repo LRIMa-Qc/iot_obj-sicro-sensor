@@ -19,7 +19,9 @@
         compatible = "soil-humidity";
         io-channels = <&adc 2>;
         power-gpios = < &gpio1 4 GPIO_ACTIVE_HIGH >;
+        //       (a)x^2 + (b)x + (c)
         dry = < (-124) 957 (-90) >;
+        //       (a)x^2 + (b)x + (c)
         wet = < (-83) 721 (-481) >;
     };
 

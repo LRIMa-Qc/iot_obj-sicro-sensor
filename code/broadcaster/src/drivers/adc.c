@@ -110,7 +110,7 @@ int ground_humidity_read(float *humidity) {
     float wet = evaluate_polynomial(battery_voltage, wet_value);
 
     /* Convert the value to a percentage */
-    *humidity = (raw - dry_value[0]) * 100 / (wet_value[0] - dry_value[0]);
+    *humidity = (raw - dry_value[2]) * 100 / (wet_value[2] - dry_value[2]);
     *humidity = mapRange(raw, dry, wet, 0, 100);
 
     LOG_DBG("Ground humidity | raw: %d \t humidity: %d.%d%%", raw, (int)*humidity, (int)(*humidity * 100) % 100);
