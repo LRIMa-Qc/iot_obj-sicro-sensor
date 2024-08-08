@@ -20,6 +20,7 @@ class BleakScanning():
             self.__adapter = self.get_usb_bluetooth_adapters()
         else:
             self.__adapter = adapter
+        print("Adapter :", self.__adapter)
         # self.updated_devices = []
         self.new_sleep_value = 30
 
