@@ -55,7 +55,8 @@ class BleakScanning():
                 continue
 
             # Check if the device has not the same id as last time
-            if device.id > self.__devices[device.addr].id or abs(device.id - self.__devices[device.addr].id) > 5:
+            # if device.id > self.__devices[device.addr].id or abs(device.id - self.__devices[device.addr].id) > 5:
+            if device.id != self.__devices[device.addr].id:
                 self.__send_data_cb(device) # Send the data
                 self.__devices[device.addr] = device # Update the device
                 sleep(self.__sleep_time)
