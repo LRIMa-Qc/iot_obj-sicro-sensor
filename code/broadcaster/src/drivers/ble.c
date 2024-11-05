@@ -361,6 +361,7 @@ int ble_adv(void) {
     bool isSMPEnabled = false;
     if(get_button1_state()){
         LOG_INF("Button pressed, starting smp");
+        k_sleep(K_MSEC(10));  // Sleep to let time for bluetooth to enable
         isSMPEnabled = true;
         LOG_IF_ERR(smp_bt_register(), "Unable to register smp");
 
