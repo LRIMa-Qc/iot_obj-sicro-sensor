@@ -97,6 +97,39 @@ bool callbackValve2(const char* data) {
     return true;
 }
 
+// Function to be called when valve 3 state is changed on ALIVEcode
+bool callbackValve3(const char* data) {
+    Serial.print("New valve 3 state:");
+    Serial.println(data);
+
+    // Set valve 3 state
+    setValveState(valves[2], stringToBool(data));
+
+    return true;
+}
+
+// Function to be called when valve 4 state is changed on ALIVEcode
+bool callbackValve4(const char* data) {
+    Serial.print("New valve 4 state:");
+    Serial.println(data);
+
+    // Set valve 4 state
+    setValveState(valves[3], stringToBool(data));
+
+    return true;
+}
+
+// Function to be called when valve 5 state is changed on ALIVEcode
+bool callbackValve5(const char* data) {
+    Serial.print("New valve 5 state:");
+    Serial.println(data);
+
+    // Set valve 5 state
+    setValveState(valves[4], stringToBool(data));
+
+    return true;
+}
+
 // Update all valves from ALIVEcode
 void updateValveFromServer() {
     for (int i = 0; i < sizeof(valves) / sizeof(valves[0]); i++) {  // Updated loop condition
@@ -142,6 +175,15 @@ void setup() {
 
     // Add callback for valve 2
     aliotObj.onActionRecv(valves[1].actionId, callbackValve2);  // Corrected actionID to actionId
+
+    // Add callback for valve 3
+    aliotObj.onActionRecv(valves[2].actionId, callbackValve3);  // Corrected actionID to actionId
+
+    // Add callback for valve 4
+    aliotObj.onActionRecv(valves[3].actionId, callbackValve4);  // Corrected actionID to actionId
+
+    // Add callback for valve 5
+    aliotObj.onActionRecv(valves[4].actionId, callbackValve5);  // Corrected actionID to actionId
 
     // Setup valve pin
     for (int i = 0; i < sizeof(valves) / sizeof(valves[0]); i++) {
