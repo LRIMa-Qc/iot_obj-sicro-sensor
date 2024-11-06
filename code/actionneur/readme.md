@@ -98,6 +98,13 @@ After installing platformio, you need to install the libraries. You can do this 
 ### Uploading the code
 You can upload the code to the esp32 by clicking on the `PlatformIO: Upload` button ( :arrow_right: ) in the bottom left corner of vscode. (You need to have the esp32 connected to your computer)
 
+#### Relay board specific
+1. You need to set the board in `Boot` mode to upload the code. 
+    > (You can do this by shorting the `BOOT` header before connecting the esp32 to power)
+2. After the board is powered, you can unshort the `BOOT` header.
+3. You need to make sure that all the `DIP` switches are set to the relay side.
+    > (If you don't do it, the board won't flash properly. This is due to the fact that `PIN 12` must be set to `low`)
+
 ### Monitoring the serial output
 You can monitor the serial output by clicking on the `PlatformIO: Serial Monitor` button ( :electric_plug: ) in the bottom left corner of vscode. (You need to have the esp32 connected to your computer)
 
