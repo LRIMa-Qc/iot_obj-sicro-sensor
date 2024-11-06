@@ -18,6 +18,9 @@ long delayMillis = 500; // 0.5 second
 
 bool isSetupDone = false;
 
+// Serial monitor speed
+const int BAUD_RATE = 115200;
+
 // Path for the document
 const char* docPath = "/doc/";
 
@@ -33,12 +36,27 @@ const Valve valves[] = // Changed to an array
     {
         {
             .actionId = "valve_1",
-            .pin = 2,
+            .pin = 25,
             .isPinInverted = true
         },
         {
             .actionId = "valve_2",
-            .pin = 4,
+            .pin = 26,
+            .isPinInverted = true
+        },
+                {
+            .actionId = "valve_3",
+            .pin = 27,
+            .isPinInverted = true
+        },
+        {
+            .actionId = "valve_4",
+            .pin = 14,
+            .isPinInverted = true
+        },
+        {
+            .actionId = "valve_5",
+            .pin = 12,
             .isPinInverted = true
         }
     };
@@ -106,7 +124,9 @@ void onReconnect() {
 }
 
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(BAUD_RATE);
+
+    Serial.println("Starting...");
 
     aliotObj.setupConfig(AUTH_TOKEN, OBJECT_ID, SSID, PASSWORD);
 
@@ -127,6 +147,8 @@ void setup() {
     for (int i = 0; i < sizeof(valves) / sizeof(valves[0]); i++) {
         pinMode(valves[i].pin, OUTPUT);
     }
+
+    Serial.println("Setup done");
 }
 
 void loop() {
