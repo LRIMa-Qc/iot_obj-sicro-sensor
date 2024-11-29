@@ -37,27 +37,27 @@ const Valve valves[] = // Changed to an array
         {
             .actionId = "valve_1",
             .pin = 25,
-            .isPinInverted = true
+            .isPinInverted = false
         },
         {
             .actionId = "valve_2",
             .pin = 26,
-            .isPinInverted = true
+            .isPinInverted = false
         },
                 {
             .actionId = "valve_3",
             .pin = 27,
-            .isPinInverted = true
+            .isPinInverted = false
         },
         {
             .actionId = "valve_4",
             .pin = 14,
-            .isPinInverted = true
+            .isPinInverted = false
         },
         {
             .actionId = "valve_5",
-            .pin = 12,
-            .isPinInverted = true
+            .pin = 18,
+            .isPinInverted = false
         }
     };
 
