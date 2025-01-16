@@ -5,6 +5,7 @@
 ### Tools needed
 - VS Code
 - [nRF Connect](https://www.nordicsemi.com/Products/Development-tools/nrf-connect-for-desktop)
+- [nRF Command line tool](https://www.nordicsemi.com/Products/Development-tools/nRF-Command-Line-Tools/Download)
 - [nRF Connect VS Code extension](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-VS-Code)
 - nRF toolchian `v2.3.0`
 - nRF SDK `v.2.3.0`
