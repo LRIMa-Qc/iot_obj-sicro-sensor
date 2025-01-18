@@ -9,10 +9,11 @@
     };
 
     ground_temperature: ground_temperature {
-        compatible = "voltage-divider";
+        compatible = "ntc-themistor";
         io-channels = <&adc 1>;
-        output-ohms = < 10000 >;
         power-gpios = < &gpio0 22 GPIO_ACTIVE_HIGH >;
+        resistor-value = < 10000 >;
+        beta = < 3455 >;
     };
 
     ground_humidity: ground_humidity {
@@ -74,9 +75,9 @@
     // Ground temperature sensor
     channel@1 {
         reg = <1>;
-        zephyr,gain = "ADC_GAIN_1_5";
+        zephyr,gain = "ADC_GAIN_1_6";
         zephyr,reference = "ADC_REF_INTERNAL";
-        zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+        zephyr,acquisition-time = <ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 40)>;
         zephyr,input-positive = < NRF_SAADC_AIN1 >; // P0.03
         zephyr,resolution = <10>;
         zephyr,oversampling = < 4 >;

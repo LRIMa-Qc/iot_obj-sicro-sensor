@@ -1,0 +1,24 @@
+description: >
+  NTC Thermistor sensor definition.
+  Taking the adc pin, power pin, Resistor value at 25C and the B value of the thermistor
+
+compatible: ntc-themistor
+
+include: base.yaml
+
+properties:
+  io-channels:
+    required: true
+    description: Channels of the adc pin of the sensor
+  power-gpios:
+    type: phandle-array
+    description: |
+      Control power to the sensor inputs.
+  resistor-value:
+    type: int
+    required: true
+    description: Resistor value at 25C in ohms
+  beta:
+    type: int
+    required: true
+    description: B value of the thermistor
