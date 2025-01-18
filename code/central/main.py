@@ -1,10 +1,8 @@
 from aliot.aliot_obj import AliotObj
-import asyncio
 from device import Device
 from bleakScanning import BleakScanning
 import time
 from datetime import datetime
-import os
 import threading
 from datetime import datetime
 
@@ -13,8 +11,8 @@ sensor_iot = AliotObj("central")
 
 def handle_change_sleep(data):
     # reader.updated_devices = []
-    if data != None:
-        reader.new_sleep_value = data
+    if data is not None and "/doc/sleep_time" in data:
+        reader.new_sleep_value = data["/doc/sleep_time"]
     else:
         reader.new_sleep_value = sensor_iot.get_doc('/doc/sleep_time') or 30
     print(f"New sleep time: {reader.new_sleep_value}")
@@ -119,8 +117,8 @@ def start():
 
 
 sensor_iot.on_start(callback=start)
-
-sensor_iot.on_action_recv(action_id='change_sleep_time', callback=handle_change_sleep)
+sensor_iot.listen_doc(["/doc/sleep_time"], handle_change_sleep)
+# sensor_iot.on_action_recv(action_id='change_sleep_time', callback=handle_change_sleep)
 
 
 aliot_thread = threading.Thread(target=sensor_iot.run)
