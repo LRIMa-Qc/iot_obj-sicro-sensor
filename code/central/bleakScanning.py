@@ -22,7 +22,7 @@ class BleakScanning():
             self.__adapter = adapter
         print("Adapter :", self.__adapter)
         # self.updated_devices = []
-        self.new_sleep_value = 30
+        self.new_sleep_value = None
 
         self.scanning = False
         self.__log_all = log_all
@@ -165,7 +165,9 @@ class BleakScanning():
             line = (device.name, device.address, advertisement_data.service_data)
             if self.__is_valid(line):
                 self.__input_buffer.put(line)
-            asyncio.create_task(self.writeCharacteristics(device, self.new_sleep_value))
+            
+            if self.new_sleep_value is not None:
+                asyncio.create_task(self.writeCharacteristics(device, self.new_sleep_value))
             
         # elif device.name is not None and "LRIMa conn" in device.name:
             # print(f"LRIMACONN Device: {device.name}, Address: {device.address}")
