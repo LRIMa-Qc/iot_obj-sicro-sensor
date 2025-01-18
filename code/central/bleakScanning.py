@@ -6,9 +6,11 @@ from threading import Thread
 from time import sleep
 from queue import Queue
 import os
-
-
 from device import Device
+import time
+
+# Reboot the device if no data was received for 24 hours
+REBOOT_AFTER_INACTIVE = 60 * 60 * 24 # 24 hours
 
 class BleakScanning():
     def __init__(self, send_data_cb, send_logs_cb, log_all: bool, adapter: str = "") -> None:
@@ -16,6 +18,8 @@ class BleakScanning():
         self.__sleep_time = 0.01
         self.__input_buffer = Queue() 
         self.__devices = {}
+        # Last time data was received
+        self.last_received_time = None
         if adapter is None or adapter == "":
             self.__adapter = self.get_usb_bluetooth_adapters()
         else:
@@ -90,6 +94,12 @@ class BleakScanning():
 
     async def __read(self):
         while True:
+            if self.last_received_time is not None:
+                print(time.time() - self.last_received_time)
+            if self.last_received_time is not None and (time.time() - self.last_received_time) > REBOOT_AFTER_INACTIVE:
+                print("Rebooting the device because no data was received for 24 hours")
+                os.system("sudo reboot")
+            
             try:
                 if not self.scanning:
                     self.scanning = True
@@ -169,6 +179,7 @@ class BleakScanning():
             if self.new_sleep_value is not None:
                 asyncio.create_task(self.writeCharacteristics(device, self.new_sleep_value))
             
+            self.last_received_time = time.time()
         # elif device.name is not None and "LRIMa conn" in device.name:
             # print(f"LRIMACONN Device: {device.name}, Address: {device.address}")
             # if device.name not in self.updated_devices:
