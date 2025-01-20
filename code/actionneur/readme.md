@@ -143,7 +143,7 @@ You can monitor the serial output by clicking on the `PlatformIO: Serial Monitor
 
 ![Connection components](doc/schema_actionneur.png)
 
-Connect into the COM (middle) the voltage source (anything between 0V to 120V) and the NO (Normally Open) the component you want to control. You can connect the NC (Normally Closed) to the component if you want to invert the relay state.
+Connect into the COM (middle) the voltage source (anything between 0V to 220V) and the NO (Normally Open) the component you want to control. You can connect the NC (Normally Closed) to the component if you want to invert the relay state.
 
 In simpler terms:
 
