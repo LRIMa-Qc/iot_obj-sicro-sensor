@@ -8,6 +8,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/rebout.h>
 #include "drivers/adc.h"
 #include "drivers/aht20.h"
 #include "drivers/sht20.h"
@@ -16,6 +17,8 @@
 #include "drivers/led.h"
 #include "drivers/button.h"
 #include "utils.h"
+
+#define WEEK_IN_SECONDS (7 * 24 * 60 * 60)
 
 LOG_MODULE_REGISTER(MAIN, CONFIG_MAIN_LOG_LEVEL);
 
@@ -37,8 +40,20 @@ static uint16_t sleep_time = CONFIG_SENSOR_SLEEP_DURATION_SEC;
 /* Time spent sleeping */
 static uint16_t sleep_time_spent = 0;
 
+static uint32_t elapsed_seconds = 0;
+static struct k_timer weekly_timer;
+
 //Pointer to the current i2c temperature and humidity sensor
 static int (*ptr_temp_hum_read)(float *, float *);
+
+void timer_handler(struct k_timer *dummy) {
+    elapsed_seconds += 1;
+
+    if (elapsed_seconds >= WEEK_IN_SECONDS) {
+        LOG_INF("A week has passed! Triggering reboot...\n");
+        sys_reboot(SYS_REBOOT_COLD);  // Reboot the system
+    }
+}
 
 /**
  * @brief Read all of the sensors data and store it in the sensors_data variable
@@ -117,6 +132,10 @@ static int init_temp_hum_sensor(void) {
  */
 void main(void) {
 	LOG_INF("Starting application");
+	LOG_INF("Starting weekly timer...\n");
+
+    k_timer_init(&weekly_timer, timer_handler, NULL);
+    k_timer_start(&weekly_timer, K_SECONDS(1), K_SECONDS(1));
 
 	// Initialize the LED driver
 	LOG_IF_ERR(led_init(), "Unable to initialize LED");
