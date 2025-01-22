@@ -69,10 +69,24 @@ bool stringToBool(const char* str) {
     return std::strcmp(str, "true") == 0;
 }
 
-void setValveState(const Valve& valve, bool state) {  // Pass by reference
-    if (valve.isPinInverted) digitalWrite(valve.pin, !state);
-    else digitalWrite(valve.pin, state);
+void setValveState(const Valve& valve, bool state) {
+    if (valve.isPinInverted) {
+        digitalWrite(valve.pin, !state);
+        aliotObj.updateDoc(
+            createDict<bool>(
+                Pair<bool>((std::string(docPath) + valve.actionId).c_str(), !state)
+            )
+        );
+    } else {
+        digitalWrite(valve.pin, state);
+        aliotObj.updateDoc(
+            createDict<bool>(
+                Pair<bool>((std::string(docPath) + valve.actionId).c_str(), state)
+            )
+        );
+    }
 }
+
 
 // Function to be called when valve 1 state is changed on ALIVEcode
 bool callbackValve1(const char* data) {
