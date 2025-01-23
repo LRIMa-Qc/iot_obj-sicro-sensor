@@ -1,0 +1,5 @@
+
+aliot-py>=1.0.0
+pyserial>=3.5
+bleak
+opencv-python==3.4.13.47
