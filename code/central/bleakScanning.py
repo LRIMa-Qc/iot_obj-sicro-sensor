@@ -9,8 +9,8 @@ import os
 from device import Device
 import time
 
-# Reboot the device if no data was received for 24 hours
-REBOOT_AFTER_INACTIVE = 60 * 60 * 24 # 24 hours
+# Reboot the device if no data was received for 12 hours
+REBOOT_AFTER_INACTIVE = 60 * 60 * 12 # 12 hours
 
 class BleakScanning():
     def __init__(self, send_data_cb, send_logs_cb, log_all: bool, adapter: str = "") -> None:
@@ -39,8 +39,10 @@ class BleakScanning():
     def __input_buffer_parser(self) -> None:
         '''Parse the input buffer'''
         while True:
+            if self.last_received_time is not None:
+                print(time.time() - self.last_received_time)
             if self.last_received_time is not None and (time.time() - self.last_received_time) > REBOOT_AFTER_INACTIVE:
-                print("Rebooting the device because no data was received for 24 hours")
+                print("Rebooting the device because no data was received for 12 hours")
                 os.system("sudo reboot")
             
             if  self.__input_buffer.empty(): # Check if the input buffer is empty
@@ -101,7 +103,7 @@ class BleakScanning():
             if self.last_received_time is not None:
                 print(time.time() - self.last_received_time)
             if self.last_received_time is not None and (time.time() - self.last_received_time) > REBOOT_AFTER_INACTIVE:
-                print("Rebooting the device because no data was received for 24 hours")
+                print("Rebooting the device because no data was received for 12 hours")
                 os.system("sudo reboot")
             
             try:
