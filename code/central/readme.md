@@ -17,14 +17,27 @@ python main.py
 
 # USING SERVICES
 
-## 1. For using PM2 as the service manager, modify the file pm2.json to your needs and run the following command
+## 1. Install PM2
+
+First download npm
+```bash
+sudo apt-get install npm
+```
+
+Then download pm2 globally using npm
+```bash
+sudo npm i -g pm2
+```
+
+## 2. For using PM2 as the service manager, modify the file pm2.json to your needs and run the following command
 ### NOTE: You must have pm2 installed globally and the venv must be created and the requirements must be installed
 
 ```bash
 pm2 start pm2.json
 ```
 
-### To automatically start the service on boot, run the following command
+### To automatically start the service on boot, run the following command.
+### NOTE : Read the output of `pm2 startup` !! You will have a command to paste in the terminal!
 
 ```bash
 pm2 save
