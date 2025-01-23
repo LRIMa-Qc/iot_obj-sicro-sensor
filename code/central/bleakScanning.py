@@ -19,7 +19,7 @@ class BleakScanning():
         self.__input_buffer = Queue() 
         self.__devices = {}
         # Last time data was received
-        self.last_received_time = None
+        self.last_received_time = time.time()
         if adapter is None or adapter == "":
             self.__adapter = self.get_usb_bluetooth_adapters()
         else:
@@ -39,6 +39,10 @@ class BleakScanning():
     def __input_buffer_parser(self) -> None:
         '''Parse the input buffer'''
         while True:
+            if self.last_received_time is not None and (time.time() - self.last_received_time) > REBOOT_AFTER_INACTIVE:
+                print("Rebooting the device because no data was received for 24 hours")
+                os.system("sudo reboot")
+            
             if  self.__input_buffer.empty(): # Check if the input buffer is empty
                 sleep(self.__sleep_time)
                 continue
