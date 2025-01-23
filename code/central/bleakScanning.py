@@ -40,8 +40,6 @@ class BleakScanning():
     def __input_buffer_parser(self) -> None:
         '''Parse the input buffer'''
         while True:
-            if self.last_received_time is not None:
-                print(time.time() - self.last_received_time)
             if self.last_received_time is not None and (time.time() - self.last_received_time) > REBOOT_AFTER_INACTIVE:
                 print("Rebooting the device because no data was received for 12 hours")
                 os.system("sudo reboot")
