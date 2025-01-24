@@ -8,7 +8,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/sys/rebout.h>
+#include <zephyr/sys/reboot.h>
 #include "drivers/adc.h"
 #include "drivers/aht20.h"
 #include "drivers/sht20.h"
@@ -18,7 +18,7 @@
 #include "drivers/button.h"
 #include "utils.h"
 
-#define WEEK_IN_SECONDS (7 * 24 * 60 * 60)
+#define WEEK_IN_MILLISECONDS (7 * 24 * 60 * 60 * 1000)
 
 LOG_MODULE_REGISTER(MAIN, CONFIG_MAIN_LOG_LEVEL);
 
@@ -39,19 +39,18 @@ bool first_run = true;
 static uint16_t sleep_time = CONFIG_SENSOR_SLEEP_DURATION_SEC;
 /* Time spent sleeping */
 static uint16_t sleep_time_spent = 0;
-
-static uint32_t elapsed_seconds = 0;
-static struct k_timer weekly_timer;
+static uint64_t initial_timestamp = 0;
 
 //Pointer to the current i2c temperature and humidity sensor
 static int (*ptr_temp_hum_read)(float *, float *);
 
-void timer_handler(struct k_timer *dummy) {
-    elapsed_seconds += 1;
+static void check_and_reboot_if_week_elapsed(void) {
+    uint64_t current_timestamp = k_uptime_get();
+    uint64_t elapsed_time = current_timestamp - initial_timestamp;
 
-    if (elapsed_seconds >= WEEK_IN_SECONDS) {
-        LOG_INF("A week has passed! Triggering reboot...\n");
-        sys_reboot(SYS_REBOOT_COLD);  // Reboot the system
+    if (elapsed_time >= WEEK_IN_MILLISECONDS) {
+        LOG_INF("A week has passed! Triggering reboot...");
+        sys_reboot(SYS_REBOOT_COLD);
     }
 }
 
@@ -59,21 +58,21 @@ void timer_handler(struct k_timer *dummy) {
  * @brief Read all of the sensors data and store it in the sensors_data variable
  */
 static void read(void) {
-		LOG_INF("Reading sensors data");
+	LOG_INF("Reading sensors data");
 
-		// Read the temperature and humidity
-		if (ptr_temp_hum_read != NULL) { LOG_IF_ERR(ptr_temp_hum_read(&sensors_data.temp, &sensors_data.hum), "Unable to read temperature and humidity"); }
-		else LOG_WRN("No temperature and humidity sensor found");
-		// Read the luminosity
-		LOG_IF_ERR(luminosity_read(&sensors_data.lum), "Unable to read luminosity");
-		// Read the ground temperature
-		LOG_IF_ERR(ground_temperature_read(&sensors_data.gnd_temp), "Unable to read ground temperature");
-		// Read the ground humidity
-		LOG_IF_ERR(ground_humidity_read(&sensors_data.gnd_hum), "Unable to read ground humidity");
-		// Read the battery level
-		LOG_IF_ERR(battery_voltage_read(&sensors_data.bat), "Unable to read battery level");
+	// Read the temperature and humidity
+	if (ptr_temp_hum_read != NULL) { LOG_IF_ERR(ptr_temp_hum_read(&sensors_data.temp, &sensors_data.hum), "Unable to read temperature and humidity"); }
+	else LOG_WRN("No temperature and humidity sensor found");
+	// Read the luminosity
+	LOG_IF_ERR(luminosity_read(&sensors_data.lum), "Unable to read luminosity");
+	// Read the ground temperature
+	LOG_IF_ERR(ground_temperature_read(&sensors_data.gnd_temp), "Unable to read ground temperature");
+	// Read the ground humidity
+	LOG_IF_ERR(ground_humidity_read(&sensors_data.gnd_hum), "Unable to read ground humidity");
+	// Read the battery level
+	LOG_IF_ERR(battery_voltage_read(&sensors_data.bat), "Unable to read battery level");
 
-		LOG_INF("All sensors data read");
+	LOG_INF("All sensors data read");
 }
 
 /**
@@ -132,10 +131,8 @@ static int init_temp_hum_sensor(void) {
  */
 void main(void) {
 	LOG_INF("Starting application");
-	LOG_INF("Starting weekly timer...\n");
 
-    k_timer_init(&weekly_timer, timer_handler, NULL);
-    k_timer_start(&weekly_timer, K_SECONDS(1), K_SECONDS(1));
+	initial_timestamp = k_uptime_get();
 
 	// Initialize the LED driver
 	LOG_IF_ERR(led_init(), "Unable to initialize LED");
@@ -152,15 +149,14 @@ void main(void) {
 
 	while(true) {
 		LOG_INF("Starting a new loop");
-		k_sleep(K_SECONDS(1));
-		
+		check_and_reboot_if_week_elapsed();
+
 		// Read the sensors data
 		read();
 
 		if(first_run) {
 			// Re read the sensors data to avoid sending wrong data (the first read is often wrong)
 			LOG_INF("First run, re reading sensors data");
-
 			read();
 			first_run = false;
 		}
