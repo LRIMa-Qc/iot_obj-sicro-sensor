@@ -1,6 +1,7 @@
 
 **/config.ini
 **/last_received_time.txt
+**/central/data.csv
 
 **/.DS_Store
 
