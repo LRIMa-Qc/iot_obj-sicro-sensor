@@ -1,13 +1,16 @@
+import time
+import threading
+import os
 from aliot.aliot_obj import AliotObj
 from device import Device
 from bleakScanning import BleakScanning
-import time
 from datetime import datetime
-import threading
 from datetime import datetime
+
+# Reboot the device if no data was received for 1 hour
+REBOOT_AFTER_INACTIVE = 60 * 60 * 1 # 1 hour
 
 sensor_iot = AliotObj("central")
-
 
 def handle_change_sleep(data):
     if data is not None and "/doc/sleep_time" in data:
@@ -104,29 +107,47 @@ def send_logs(msg: str):
 
     
 
-
-
 def start():
     '''Main function'''
-    print("START MAIN ALIOT")
+
+    # Set the sleep time by getting the value from the doc
     if sensor_iot.connected_to_alivecode:
         handle_change_sleep(None)
+        
+    # Loop to check last received time
+    # if no data was received for 1 hour, reboot the device
+    while True:
+        f = open('last_received_time.txt', 'r')
+        last_received_time = float(f.read())
+        f.close()
+    
+        # Debug
+        if last_received_time is not None:
+            print(time.time() - last_received_time)
+        
+        # Check if no data was received for 1 hour
+        if last_received_time is not None and (time.time() - last_received_time) > REBOOT_AFTER_INACTIVE:
+            print("Rebooting the device because no data was received for 1 hour")
+            os.system("sudo reboot")
+        
+        # Sleep for 1 minute
+        time.sleep(60)
 
 
+if __name__ == "__main__":
+    # Save the current time to a file
+    with open('./last_received_time.txt', 'w') as f:
+        f.write(f"{time.time()}")
+        
+    # Setup aliot
+    sensor_iot.on_start(callback=start)
+    sensor_iot.listen_doc(["/doc/sleep_time"], handle_change_sleep)
+    # Start aliot
+    aliot_thread = threading.Thread(target=sensor_iot.run, kwargs={'retry_time': 10})
+    aliot_thread.start()
 
-sensor_iot.on_start(callback=start)
-sensor_iot.listen_doc(["/doc/sleep_time"], handle_change_sleep)
-# sensor_iot.on_action_recv(action_id='change_sleep_time', callback=handle_change_sleep)
-
-
-aliot_thread = threading.Thread(target=sensor_iot.run, kwargs={'retry_time': 10})
-aliot_thread.start()
-
-
-# READING BLEAK
-
-
-reader = BleakScanning(send_data, send_logs, False)
-
-reader_thread = threading.Thread(target=reader.start_scanning)
-reader_thread.start()
+    # Setup bleak (to scan for sensors and receive data from them)
+    reader = BleakScanning(send_data, send_logs, False)
+    # Start the reader thread
+    reader_thread = threading.Thread(target=reader.start_scanning)
+    reader_thread.start()
