@@ -18,8 +18,7 @@ static const int wet_value[3] = DT_PROP(DT_NODELABEL(ground_humidity), wet);
 /* Ground temperature sensor */
 static const struct adc_dt_spec temp_adc_spec = ADC_DT_SPEC_GET(DT_NODELABEL(ground_temperature));
 static const struct gpio_dt_spec temp_enable_spec = GPIO_DT_SPEC_GET(DT_NODELABEL(ground_temperature), power_gpios);
-static const uint16_t ground_temp_resistor = DT_PROP(DT_NODELABEL(ground_temperature), resistor_value);
-static const uint16_t ground_temp_beta = DT_PROP(DT_NODELABEL(ground_temperature), beta);
+static const uint16_t ground_temp_resistor = DT_PROP(DT_NODELABEL(ground_temperature), output_ohms);
 /* Luminosity sensor */
 static const struct adc_dt_spec pt19_adc_spec = ADC_DT_SPEC_GET(DT_NODELABEL(pt19));
 static const struct gpio_dt_spec pt19_enable_spec = GPIO_DT_SPEC_GET(DT_NODELABEL(pt19), power_gpios);
@@ -146,26 +145,14 @@ int ground_temperature_read(float *temperature) {
     /* Deactivate power to the sensor */
     LOG_IF_ERR(gpio_pin_set_dt(&temp_enable_spec, 0), "Ground temperature GPIO pin set failed");
 
-    /* Get the raw value */
-    uint16_t raw = sample_buffer;
-
-    /* Get the voltage from the raw value */
-    int16_t millivolts = sample_buffer;
-    LOG_IF_ERR(adc_raw_to_millivolts_dt(&temp_adc_spec, &millivolts), "Ground temperature ADC raw to millivolts failed");
-    float voltage = millivolts / 1000.0f; /* Convert to V */
-
-    /* Read the battery voltage */
-    float battery_voltage;
-    LOG_IF_ERR(battery_voltage_read(&battery_voltage), "Battery voltage read failed");
-
-    /* Calculate the resistance of the sensor */
-    float resistance = ground_temp_resistor * (battery_voltage / voltage - 1.0f);
+    /* Convert the value to a temperature */
+    float resistance = (float)ground_temp_resistor * (1023.0 / (float)sample_buffer - 1.0);
+	*temperature = log(resistance);
+	*temperature = 1 / (0.001129148 + (0.000234125 + (0.0000000876741 * *temperature * *temperature ))* *temperature );
+	*temperature = *temperature - 273.15; // Convert Kelvin to Celcius
     
-    /* Convert the value to a temperature in °C using the Beta formula */
-    *temperature = 1.0f / (1.0f / 298.15f + 1.0f / ground_temp_beta * log(resistance / ground_temp_resistor)) - 273.15f;
-
-    LOG_DBG("Ground temperature | raw: %d \t resistance: %d.%d \t voltage: %d.%dV \t temperature: %d.%d°C", raw, (int)resistance, (int)(resistance * 100) % 100, (int)voltage, (int)(voltage * 100) % 100, (int)*temperature, (int)(*temperature * 100) % 100);
-
+    LOG_DBG("Ground temperature | raw: %d \t resistance: %d.%d \t temperature: %d.%d°C", sample_buffer, (int)resistance, (int)(resistance * 100) % 100, (int)*temperature, (int)(*temperature * 100) % 100);
+    
     LOG_INF("ground temperature read done");
 
     return 0;
