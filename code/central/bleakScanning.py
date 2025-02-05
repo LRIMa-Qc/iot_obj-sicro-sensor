@@ -1,16 +1,11 @@
 import asyncio
-import re
 import subprocess
+import os
 from bleak import BleakClient, BleakScanner
 from threading import Thread
-from time import sleep
+from time import sleep, time
 from queue import Queue
-import os
 from device import Device
-import time
-
-# Reboot the device if no data was received for 12 hours
-REBOOT_AFTER_INACTIVE = 60 * 60 * 12 # 12 hours
 
 
 class BleakScanning():
@@ -19,8 +14,6 @@ class BleakScanning():
         self.__sleep_time = 0.01
         self.__input_buffer = Queue()
         self.__devices = {}
-        # Last time data was received
-        self.last_received_time = time.time()
         if adapter is None or adapter == "":
             self.__adapter = self.get_usb_bluetooth_adapters()
         else:
@@ -40,10 +33,6 @@ class BleakScanning():
     def __input_buffer_parser(self) -> None:
         '''Parse the input buffer'''
         while True:
-            if self.last_received_time is not None and (time.time() - self.last_received_time) > REBOOT_AFTER_INACTIVE:
-                print("Rebooting the device because no data was received for 12 hours")
-                os.system("sudo reboot")
-            
             if  self.__input_buffer.empty(): # Check if the input buffer is empty
                 sleep(self.__sleep_time)
                 continue
@@ -102,12 +91,6 @@ class BleakScanning():
 
     async def __read(self):
         while True:
-            if self.last_received_time is not None:
-                print(time.time() - self.last_received_time)
-            if self.last_received_time is not None and (time.time() - self.last_received_time) > REBOOT_AFTER_INACTIVE:
-                print("Rebooting the device because no data was received for 12 hours")
-                os.system("sudo reboot")
-
             try:
                 if not self.scanning:
                     self.scanning = True
@@ -222,7 +205,6 @@ class BleakScanning():
             pass
 
     def detection_callback(self, device, advertisement_data):
-
         if device.name is not None and "LRIMa" in device.name and "LRIMa conn" not in device.name:
             # print(f"Device: {device.name}, Address: {device.address}, Data: {advertisement_data.service_data}")
             line = (device.name, device.address, advertisement_data.service_data)
@@ -232,7 +214,8 @@ class BleakScanning():
             if self.new_sleep_value is not None:
                 asyncio.create_task(self.writeCharacteristics(device, self.new_sleep_value))
 
-            self.last_received_time = time.time()
+            with open('./last_received_time.txt', 'w') as f:
+                f.write(f"{time()}")
         # elif device.name is not None and "LRIMa conn" in device.name:
         # print(f"LRIMACONN Device: {device.name}, Address: {device.address}")
         # if device.name not in self.updated_devices:
