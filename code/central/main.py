@@ -8,7 +8,8 @@ from datetime import datetime
 from datetime import datetime
 
 # Reboot the device if no data was received for 1 hour
-REBOOT_AFTER_INACTIVE = 60 * 60 * 1 # 1 hour
+# REBOOT_AFTER_INACTIVE = 60 * 60 * 1 # 1 hour
+REBOOT_AFTER_INACTIVE = 4 * 60 * 60 * 1 # 4heure
 
 sensor_iot = AliotObj("central")
 
