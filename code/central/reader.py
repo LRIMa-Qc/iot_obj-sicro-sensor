@@ -24,6 +24,7 @@ class Reader():
 
     def __read(self):
         while(True):
+            print("Reading data...")
             line = ""
             err = ""
             if  self.__ser .in_waiting > 0:
@@ -52,7 +53,7 @@ class Reader():
 
             # Add the data to the input buffer so it's treated in order
             self.__input_buffer.put(line)
-
+                
     
     def __input_buffer_parser(self) -> None:
         '''Parse the input buffer'''

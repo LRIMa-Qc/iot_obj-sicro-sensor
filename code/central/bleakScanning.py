@@ -36,6 +36,15 @@ class BleakScanning():
             if  self.__input_buffer.empty(): # Check if the input buffer is empty
                 sleep(self.__sleep_time)
                 continue
+
+            if self.__input_buffer.qsize() > 500:
+                self.__send_logs_cb(f"[Warning] Buffer trop grand ({self.__input_buffer.qsize()}), suppression des anciennes entrées.")
+                while self.__input_buffer.qsize() > 250:  # Garde au moins 250 éléments récents
+                    self.__input_buffer.get(False)
+
+                sleep(self.__sleep_time)  # Attendre un peu avant de reprendre
+                continue
+
             line = self.__input_buffer.get(False)  # Get the data from the input buffer
 
             # print("\033[32mDATA: {}\033[0m".format(line))
