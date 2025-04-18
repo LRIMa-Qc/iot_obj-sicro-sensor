@@ -128,14 +128,17 @@ def start():
         
         # Check if no data was received for 1 hour
         if last_received_time is not None and (time.time() - last_received_time) > REBOOT_AFTER_INACTIVE:
-            print("Rebooting the device because no data was received for 1 hour")
-            os.system("sudo reboot")
+            print(f"Restarting bluetooth service, no data received for {REBOOT_AFTER_INACTIVE} seconds")
+            os.system("sudo systemctl restart bluetooth")
         
         # Sleep for 1 minute
         time.sleep(60)
 
 
 if __name__ == "__main__":
+    print("\n" * 5)
+    print(f'Starting the program at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
+    
     # Save the current time to a file
     with open('./last_received_time.txt', 'w') as f:
         f.write(f"{time.time()}")

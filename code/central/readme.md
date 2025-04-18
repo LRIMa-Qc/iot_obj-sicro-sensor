@@ -1,5 +1,60 @@
 # Steps to run the central device
 
+## 0. Manually install BlueZ
+We currently need to manualy install BlueZ to get the latest version. The version in the apt repository is too old (`5.66`) and has some bugs.
+
+We know that currently BlueZ `5.82` works well with the project. These steps can therefore be skipped if you have already installed BlueZ `5.82` or later.
+
+Check the version of BlueZ installed on your system with the following command:
+
+```bash
+bluetoothd --version
+```
+
+If the version is less than `5.82`, you can follow these steps to install the latest version of BlueZ:
+
+Install the dependencies:
+```bash
+sudo apt update
+sudo apt install -y libdbus-1-dev libglib2.0-dev libudev-dev libical-dev libreadline-dev libusb-dev
+```
+
+Download the `5.82` version of BlueZ from the official website:
+```bash
+cd ~
+wget https://www.kernel.org/pub/linux/bluetooth/bluez-5.82.tar.xz
+tar xvf bluez-5.82.tar.xz
+cd bluez-5.82
+```
+
+Compile and install BlueZ:
+```bash
+./configure --prefix=/usr --mandir=/usr/share/man \
+				--sysconfdir=/etc --localstatedir=/var
+make -j$(nproc)
+sudo make install
+```
+
+Reload the Bluetooth service:
+```bash
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo systemctl restart bluetooth
+sudo systemctl enable bluetooth
+```
+
+Verify the installation:
+```bash
+sudo systemctl status bluetooth
+```
+> Should show `active (running)` if the installation was successful.
+
+```
+bluetoothd --version
+```
+> Should show `5.82` or later if the installation was successful.
+
+
 ## 1. Initialize the project and the venv
 
 ```bash
