@@ -227,7 +227,7 @@ class BleakScanning:
     async def write_characteristics(self, device, value):
 
         # Prevent multiple writes queued for the same device
-        already_queued = any(d.address == device.address for d, _ in await self.write_queue.__aiter__())
+        already_queued = any(d.address == device.address for d, _ in self.write_queue._queue) 
         if already_queued:
             print(f"[Write Already Queued] {device.name} [{device.address}]")
             return
