@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from aliot.aliot_obj import AliotObj
 from device import Device
-from BleakScanning import BleakScanning
+from bleakScanning import BleakScanning
 
 # Reboot the device if no data was received for 1 hour
 # REBOOT_AFTER_INACTIVE = 60 * 60 * 1 # 1 hour
