@@ -216,7 +216,6 @@ class BleakScanning:
         
     def detection_callback(self, device, advertisement_data):
         if device.address == "00:00:00:00:00:00":
-            print(f"Ignoring empty address for {device.name}")
             return
 
         self.discovered_devices[device.address] = device
