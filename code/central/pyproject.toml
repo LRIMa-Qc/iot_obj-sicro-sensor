@@ -1,0 +1,23 @@
+[tool.black]
+line-length = 120
+target-version = ['py38']
+skip-string-normalization = false
+
+# Include only Python files and Pyi files
+include = '\.pyi?$'
+
+# Exclude specific directories and patterns
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/x
+'''

@@ -22,3 +22,5 @@ code/actionneur/include/SECRET.h
 code/central/config.ini
 
 code/central/data.csv
+
+code/central/config.ini.test
