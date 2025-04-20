@@ -264,9 +264,6 @@ class BleakScanning:
         cooldown = max(COOLDOWN_MIN_SECONDS, self.__sleep_time / 2)
         last = self.last_write_time.get(device.address, 0)
 
-        if now - last <= cooldown:
-            return
-
         if now - last < cooldown:
             print(
                 f"[Write Skipped] Cooldown active for {device.name} "
@@ -275,6 +272,7 @@ class BleakScanning:
             return
 
         self.last_write_time[device.address] = now
+
         asyncio.create_task(self.write_characteristics(device, self.new_sleep_value))
 
     def start_scanning(self):
