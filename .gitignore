@@ -21,3 +21,5 @@ code/central/__pycache__/
 code/actionneur/include/SECRET.h
 
 code/central/data.csv
+
+code/central/config.ini.test
