@@ -1,11 +1,29 @@
 import asyncio
-import subprocess
-import os
-from bleak import BleakClient, BleakScanner
 from threading import Thread
 from time import sleep, time
 from queue import Queue
+import subprocess
+import os
+from bleak import BleakClient, BleakScanner, BleakError
 from device import Device
+
+# --- Constants ---
+DEFAULT_SLEEP_TIME = 0.005
+INPUT_BUFFER_MAX_SIZE = 500
+INPUT_BUFFER_TRIM_SIZE = 250
+SCAN_DURATION_SECONDS = 5
+WRITE_DELAY_SECONDS = 0.1
+BLEAK_CLIENT_TIMEOUT = 5
+CHARACTERISTIC_VALUE_MIN = 1
+CHARACTERISTIC_VALUE_MAX = 65535  # uint16 max value
+COOLDOWN_MIN_SECONDS = 10
+LAST_RECEIVED_TIME_FILE = "./last_received_time.txt"
+INVALID_BLUETOOTH_ADDRESS = "00:00:00:00:00:00"
+LRIMA_NAME_PREFIX = "LRIMa"
+LRIMA_CONN_SUBSTRING = "LRIMa conn"
+SERVICE_UUID_SUBSTRING = "afbe"
+CHAR_UUID_SUBSTRING = "faeb"
+# ------------------
 
 
 class BleakScanning:
@@ -14,7 +32,7 @@ class BleakScanning:
         self.__send_logs_cb = send_logs_cb
         self.__log_all = log_all
 
-        self.__sleep_time = 0.005
+        self.__sleep_time = DEFAULT_SLEEP_TIME
         self.__input_buffer = Queue()
         self.__devices = {}
         self.discovered_devices = {}
@@ -41,9 +59,9 @@ class BleakScanning:
                 sleep(self.__sleep_time)
                 continue
 
-            if self.__input_buffer.qsize() > 500:
+            if self.__input_buffer.qsize() > INPUT_BUFFER_MAX_SIZE:
                 self.__send_logs_cb(f"[Warning] Buffer too large ({self.__input_buffer.qsize()}), trimming.")
-                while self.__input_buffer.qsize() > 250:
+                while self.__input_buffer.qsize() > INPUT_BUFFER_TRIM_SIZE:
                     self.__input_buffer.get(False)
                 sleep(self.__sleep_time)
                 continue
@@ -73,7 +91,7 @@ class BleakScanning:
 
     def get_usb_bluetooth_adapters(self):
         try:
-            result = subprocess.run(['hciconfig'], stdout=subprocess.PIPE, text=True)
+            result = subprocess.run(["hciconfig"], stdout=subprocess.PIPE, text=True, check=True)
             output = result.stdout
 
             def parse_to_json(data):
@@ -89,7 +107,11 @@ class BleakScanning:
                         if current_device:
                             devices.append(current_device)
                         parts = line.split(":")
-                        current_device = {"device": parts[0], "type": parts[2].strip().split()[0], "bus": parts[3].strip()}
+                        current_device = {
+                            "device": parts[0],
+                            "type": parts[2].strip().split()[0],
+                            "bus": parts[3].strip(),
+                        }
                         continue
                     if "BD Address" in line:
                         for part in line.split("  "):
@@ -116,20 +138,19 @@ class BleakScanning:
             return None
 
     async def __read(self):
-        scan_duration = 5  # seconds
         while True:
             # Scan phase
             await self.__start_scan_until_write()
             # Write phase
             await self.perform_batch_writes()
 
-    async def __start_scan_until_write(self, duration=5):
+    async def __start_scan_until_write(self):
         async with self.scan_lock:
             try:
                 scanner = BleakScanner(
                     detection_callback=self.detection_callback,
                     adapter=self.__adapter,
-                    cb={"use_bdaddr": True}, # use_bdaddr is a workaround for macOS
+                    cb={"use_bdaddr": True},  # use_bdaddr is a workaround for macOS
                 )
 
                 async with scanner:
@@ -137,15 +158,14 @@ class BleakScanning:
                     await scanner.start()
                     self.scanning = True
 
-                    # Wait for either duration or write_queue not empty
-                    start = asyncio.get_event_loop().time()
+                    # Wait for write_queue not empty
                     while True:
-                        
+
                         if not self.write_queue.empty():
                             break
                         await asyncio.sleep(self.__sleep_time)
                 await scanner.stop()
-            except Exception as e:
+            except (BleakError, asyncio.TimeoutError) as e:
                 print(f"[Scan Error] {e}")
                 self.scanning = False
                 os.system("sudo systemctl restart bluetooth")
@@ -157,11 +177,11 @@ class BleakScanning:
     async def perform_batch_writes(self):
         if self.write_queue.empty():
             return
-        
+
         while not self.write_queue.empty():
             device, value = await self.write_queue.get()
             await self._write_characteristic(device, value)
-            await asyncio.sleep(0.1)  # Small delay to avoid overwhelming the device
+            await asyncio.sleep(WRITE_DELAY_SECONDS)  # Small delay to avoid overwhelming the device
 
     async def _write_characteristic(self, device, value):
         async with self.write_lock:
@@ -171,19 +191,19 @@ class BleakScanning:
                 self.write_queue.task_done()
                 return
 
-            if not (1 <= value <= 65535):
+            if not (CHARACTERISTIC_VALUE_MIN <= value <= CHARACTERISTIC_VALUE_MAX):
                 print(f"[Invalid Value] {device.name} [{device.address}]: {value}")
                 self.write_queue.task_done()
                 return
 
             try:
-                async with BleakClient(bleak_device, timeout=5) as client:
+                async with BleakClient(bleak_device, timeout=BLEAK_CLIENT_TIMEOUT) as client:
                     for service in client.services:
-                        if "afbe" not in service.uuid:
+                        if SERVICE_UUID_SUBSTRING not in service.uuid:
                             continue
 
                         for char in service.characteristics:
-                            if "faeb" not in char.uuid:
+                            if CHAR_UUID_SUBSTRING not in char.uuid:
                                 continue
 
                             current_value_in_device = int.from_bytes(
@@ -194,44 +214,44 @@ class BleakScanning:
                                 print(f"[Unchanged sleep] {device.name} [{device.address}]: {current_value_in_device}")
                                 break
 
-                            await client.write_gatt_char(
-                                char.uuid, value.to_bytes(2, "little"), response=True
+                            await client.write_gatt_char(char.uuid, value.to_bytes(2, "little"), response=True)
+                            print(
+                                f"[Updated sleep] {device.name} [{device.address}]: {current_value_in_device} → {value}"
                             )
-                            print(f"[Updated sleep] {device.name} [{device.address}]: {current_value_in_device} → {value}")
                         break
             except asyncio.TimeoutError:
                 print(f"[Connection Timeout] {device.name} [{device.address}]")
-            except Exception as e:
+            except (BleakError, ValueError) as e:
                 print(f"[Write Failed] {device.name} [{device.address}]: {e!r}")
 
-    async def writeCharacteristics(self, device, value):
+    async def write_characteristics(self, device, value):
 
         # Prevent multiple writes queued for the same device
-        already_queued = any(d.address == device.address for d, _ in self.write_queue._queue)
+        already_queued = any(d.address == device.address for d, _ in await self.write_queue.__aiter__())
         if already_queued:
             print(f"[Write Already Queued] {device.name} [{device.address}]")
             return
 
         await self.write_queue.put((device, value))
-        
+
     def detection_callback(self, device, advertisement_data):
-        if device.address == "00:00:00:00:00:00":
+        if device.address == INVALID_BLUETOOTH_ADDRESS:
             return
 
         self.discovered_devices[device.address] = device
 
         name = device.name
-        if not name or "LRIMa" not in name or "LRIMa conn" in name:
+        if not name or LRIMA_NAME_PREFIX not in name or LRIMA_CONN_SUBSTRING in name:
             return
 
         # Parse the advertisement data
         line = (name, device.address, advertisement_data.service_data)
         if self.__is_valid(line):
             self.__input_buffer.put(line)
-            
+
         self.handle_change_sleep(device)
-        
-        with open('./last_received_time.txt', 'w') as f:
+
+        with open(LAST_RECEIVED_TIME_FILE, "w", encoding="utf-8") as f:
             f.write(str(time()))
 
     def handle_change_sleep(self, device):
@@ -239,19 +259,21 @@ class BleakScanning:
             return
 
         now = time()
-        cooldown = max(10, self.__sleep_time / 2)
+        cooldown = max(COOLDOWN_MIN_SECONDS, self.__sleep_time / 2)
         last = self.last_write_time.get(device.address, 0)
 
         if now - last <= cooldown:
             return
 
         if now - last < cooldown:
-            print(f"[Write Skipped] Cooldown active for {device.name} [{device.address}] ({now - last:.1f}s since last attempt)")
+            print(
+                f"[Write Skipped] Cooldown active for {device.name} "
+                f"[{device.address}] ({now - last:.1f}s since last attempt)"
+            )
             return
 
         self.last_write_time[device.address] = now
-        asyncio.create_task(self.writeCharacteristics(device, self.new_sleep_value))
-
+        asyncio.create_task(self.write_characteristics(device, self.new_sleep_value))
 
     def start_scanning(self):
         loop = asyncio.new_event_loop()
