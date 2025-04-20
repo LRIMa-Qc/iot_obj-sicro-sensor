@@ -1,8 +1,7 @@
 # Steps to run the central device
 
 ## 0. Manually install BlueZ
-We currently need to manualy install BlueZ to get the latest version. The version in the apt repository is too old (`5.66`) and has some bugs.
-
+We currently need to manually install BlueZ to get the latest version. The version in the apt repository is too old (`5.66`) and has some bugs.
 We know that currently BlueZ `5.82` works well with the project. These steps can therefore be skipped if you have already installed BlueZ `5.82` or later.
 
 Check the version of BlueZ installed on your system with the following command:
