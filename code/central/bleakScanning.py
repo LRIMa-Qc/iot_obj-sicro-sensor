@@ -221,6 +221,8 @@ class BleakScanning:
                         break
             except asyncio.TimeoutError:
                 print(f"[Connection Timeout] {device.name} [{device.address}]")
+            except EOFError:
+                print(f"[Connection Close Error] {device.name} [{device.address}]")
             except (BleakError, ValueError) as e:
                 print(f"[Write Failed] {device.name} [{device.address}]: {e!r}")
 
