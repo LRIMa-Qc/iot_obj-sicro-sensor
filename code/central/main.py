@@ -7,8 +7,8 @@ from device import Device
 from bleakScanning import BleakScanning
 
 # Reboot the device if no data was received for 1 hour
-# REBOOT_AFTER_INACTIVE = 60 * 60 * 1 # 1 hour
-REBOOT_AFTER_INACTIVE = 4 * 60 * 60 * 1  # 4heure
+REBOOT_AFTER_INACTIVE = 60 * 5 # 5min
+# REBOOT_AFTER_INACTIVE = 4 * 60 * 60 * 1  # 4heure
 
 sensor_iot = AliotObj("central")
 
@@ -129,6 +129,7 @@ def start():
         if last_received_time is not None and (time.time() - last_received_time) > REBOOT_AFTER_INACTIVE:
             print(f"Restarting bluetooth service, no data received for {REBOOT_AFTER_INACTIVE} seconds")
             os.system("sudo systemctl restart bluetooth")
+            os.system("pm2 restart all")
 
         # Sleep for 1 minute
         time.sleep(60)
