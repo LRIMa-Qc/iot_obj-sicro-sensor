@@ -170,6 +170,7 @@ class BleakScanning:
                 self.scanning = False
                 os.system("sudo systemctl restart bluetooth")
                 os.system("pm2 restart all")
+                sys.exit() # quit
             finally:
                 self.scanning = False
                 await asyncio.sleep(0.1)  # Small delay to ensure scanner stops properly
