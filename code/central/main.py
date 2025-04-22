@@ -130,6 +130,7 @@ def start():
             print(f"Restarting bluetooth service, no data received for {REBOOT_AFTER_INACTIVE} seconds")
             os.system("sudo systemctl restart bluetooth")
             os.system("pm2 restart all")
+            sys.exit() # quit
 
         # Sleep for 1 minute
         time.sleep(60)
@@ -138,6 +139,8 @@ def start():
 if __name__ == "__main__":
     print("\n" * 5)
     print(f'Starting the program at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
+    time.sleep(2)
+    print("Started")
 
     # Save the current time to a file
     with open("./last_received_time.txt", "w", encoding="utf-8") as f:
