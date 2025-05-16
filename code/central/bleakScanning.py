@@ -4,6 +4,7 @@ from time import sleep, time
 from queue import Queue
 import subprocess
 import os
+import sys
 from bleak import BleakClient, BleakScanner, BleakError
 from device import Device
 
