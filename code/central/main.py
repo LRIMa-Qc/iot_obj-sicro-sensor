@@ -145,6 +145,11 @@ if __name__ == "__main__":
     # Setup bleak (to scan for sensors and receive data from them)
     reader = BleakScanning(send_data, send_logs, False)
 
+    # Save the current time to a file
+    with open("./last_received_time.txt", "w", encoding="utf-8") as f:
+        f.truncate(0)
+        f.write(f"{time.time()}")
+
     # Setup aliot
     sensor_iot.on_start(callback=start)
     sensor_iot.listen_doc(["/doc/sleep_time"], handle_change_sleep)
