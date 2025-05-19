@@ -257,7 +257,7 @@ class BleakScanning:
 
         with open(LAST_RECEIVED_TIME_FILE, "w", encoding="utf-8") as f:
             f.truncate(0)
-            f.write(f"{time.time()}")
+            f.write(f"{time()}")
 
 
     def handle_change_sleep(self, device):
