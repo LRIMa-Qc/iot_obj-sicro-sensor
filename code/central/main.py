@@ -107,7 +107,6 @@ def send_logs(msg: str):
     if sensor_iot.connected_to_alivecode:
         sensor_iot.update_component("log", data)
 
-
 def start():
     """Main function"""
 
@@ -142,10 +141,6 @@ if __name__ == "__main__":
     print(f'Starting the program at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
     time.sleep(2)
     print("Started")
-
-    # Save the current time to a file
-    with open("./last_received_time.txt", "w", encoding="utf-8") as f:
-        f.write(f"{time.time()}")
 
     # Setup bleak (to scan for sensors and receive data from them)
     reader = BleakScanning(send_data, send_logs, False)
