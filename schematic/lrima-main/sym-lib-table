@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "serre-lrima-altium-import")(type "KiCad")(uri "${KIPRJMOD}/serre-lrima-altium-import.kicad_sym")(options "")(descr ""))
+)
