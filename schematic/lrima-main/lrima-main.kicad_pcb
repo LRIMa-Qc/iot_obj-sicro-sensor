@@ -42,7 +42,7 @@
 			(layerselection 0x00000000_00000000_55555555_5755f5ff)
 			(plot_on_all_layers_selection 0x00000000_00000000_00000000_00000000)
 			(disableapertmacros no)
-			(usegerberextensions no)
+			(usegerberextensions yes)
 			(usegerberattributes yes)
 			(usegerberadvancedattributes yes)
 			(creategerberjobfile yes)
@@ -70,7 +70,7 @@
 			(hidednponfab no)
 			(sketchdnponfab yes)
 			(crossoutdnponfab yes)
-			(subtractmaskfromsilk no)
+			(subtractmaskfromsilk yes)
 			(outputformat 1)
 			(mirror no)
 			(drillshape 0)
@@ -19487,7 +19487,7 @@
 		(uuid "f82d3123-6c13-42d3-969f-cf93f3182eac")
 	)
 	(gr_text "V3.6.0"
-		(at 159.875 108.775 270)
+		(at 159.5 109 270)
 		(layer "F.SilkS")
 		(uuid "74e2d352-2cb9-4498-8b0a-b831ea563029")
 		(effects
@@ -19499,7 +19499,7 @@
 			(justify left bottom)
 		)
 	)
-	(gr_text "ALIVEculture"
+	(gr_text "LRIMa Culture"
 		(at 161 94.975 270)
 		(layer "F.SilkS")
 		(uuid "f3a2a590-4bdc-448c-b147-fcdc38d1d1eb")
