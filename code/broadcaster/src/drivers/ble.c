@@ -55,6 +55,7 @@ static const struct bt_data adv_data[] = {
         BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
         BT_DATA_BYTES(BT_DATA_UUID16_ALL, BT_UUID_16_ENCODE(SLEEP_TIME_SERVICE_UUID)),
     #endif
+    BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
     BT_DATA(BT_DATA_SVC_DATA16, service_data, sizeof(service_data)),
 };
 
@@ -63,10 +64,9 @@ static const struct bt_le_adv_param adv_param = {
         .options = 
             (
                   BT_LE_ADV_OPT_EXT_ADV 
-                | BT_LE_ADV_OPT_USE_NAME 
                 | BT_LE_ADV_OPT_USE_IDENTITY 
             #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-                | BT_LE_ADV_OPT_CONNECTABLE
+                | BT_LE_ADV_OPT_CONN
             #endif
             #if CONFIG_BLE_ADV_USE_CODED_PHY
                 | BT_LE_ADV_OPT_CODED
@@ -266,12 +266,20 @@ struct mgmt_callback smp_mgmt_cb;
 /**
  * @brief Handle the smp events 
 */
-int32_t smp_mgmt_cb_handler(uint32_t event, int32_t rc, bool *abort_more, void *data,
+enum mgmt_cb_return smp_mgmt_cb_handler(uint32_t event, enum mgmt_cb_return prev_status,
+                    int32_t *rc, uint16_t *group, bool *abort_more, void *data,
                     size_t data_size)
 {
+    (void)prev_status;
+    (void)rc;
+    (void)group;
+    (void)abort_more;
+    (void)data;
+    (void)data_size;
+
     k_timer_start(&conn_timeout_timer, K_SECONDS(CONFIG_BLE_CONN_TIMEOUT_SEC), K_NO_WAIT);
     LOG_INF("SMP event: %d", event);
-    return MGMT_ERR_EOK;
+    return MGMT_CB_OK;
 }
 
 int ble_init(uint16_t *sleep_time_ptr) {
@@ -363,7 +371,9 @@ int ble_adv(void) {
         LOG_INF("Button pressed, starting smp");
         k_sleep(K_MSEC(10));  // Sleep to let time for bluetooth to enable
         isSMPEnabled = true;
-        LOG_IF_ERR(smp_bt_register(), "Unable to register smp");
+        #if defined(CONFIG_MCUMGR_TRANSPORT_BT_DYNAMIC_SVC_REGISTRATION)
+            LOG_IF_ERR(smp_bt_register(), "Unable to register smp");
+        #endif
 
         smp_mgmt_cb.callback = smp_mgmt_cb_handler;
         smp_mgmt_cb.event_id = (MGMT_EVT_OP_CMD_STATUS);
@@ -383,7 +393,6 @@ int ble_adv(void) {
     k_timer_start(&advertising_timer, K_SECONDS(CONFIG_BLE_ADV_DURATION_SEC), K_NO_WAIT);
 
     while (!adv_time_done) {
-            k_yield();
             k_sleep(K_MSEC(10));  // Sleep for a short duration while waiting
     }
 
@@ -391,14 +400,12 @@ int ble_adv(void) {
 
     if(get_button1_state()) LOG_INF("Button pressed, waiting to stop advertising");
     while(get_button1_state()) {
-        k_yield();
         k_sleep(K_MSEC(10));
     }
 
     #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
         if(isConnected) LOG_INF("Waiting for disconnection");
         while(isConnected) {
-            k_yield();
             k_sleep(K_MSEC(10));
         }
     #endif
@@ -409,7 +416,9 @@ int ble_adv(void) {
 
     if(isSMPEnabled) {
         LOG_INF("Unregistering smp");
-        LOG_IF_ERR(smp_bt_unregister(), "Unable to unregister smp");
+        #if defined(CONFIG_MCUMGR_TRANSPORT_BT_DYNAMIC_SVC_REGISTRATION)
+            LOG_IF_ERR(smp_bt_unregister(), "Unable to unregister smp");
+        #endif
         mgmt_callback_unregister(&smp_mgmt_cb);
     }
 

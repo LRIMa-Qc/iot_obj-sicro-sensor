@@ -1,0 +1,5 @@
+board:
+  name: lrima_greenhouse_nrf52833
+  vendor: LRIMa
+  socs:
+    - name: nrf52833

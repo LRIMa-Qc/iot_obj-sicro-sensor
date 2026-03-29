@@ -129,7 +129,7 @@ static int init_temp_hum_sensor(void) {
 /**
  * @brief Main function
  */
-void main(void) {
+int main(void) {
 	LOG_INF("Starting application");
 
 	initial_timestamp = k_uptime_get();
@@ -168,10 +168,11 @@ void main(void) {
 		sleep_time_spent = 0;
 		LOG_INF("Sleeping for %d seconds", sleep_time);
 		while(sleep_time_spent < sleep_time && !get_button1_state()) {
-			k_yield();
 			k_sleep(K_SECONDS(1));
 			sleep_time_spent++;
 		}
 		if(get_button1_state()) LOG_INF("Button pressed, waking up");
 	}
+
+	return 0;
 }

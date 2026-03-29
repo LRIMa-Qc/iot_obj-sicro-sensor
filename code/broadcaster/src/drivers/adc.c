@@ -146,10 +146,10 @@ int ground_temperature_read(float *temperature) {
     LOG_IF_ERR(gpio_pin_set_dt(&temp_enable_spec, 0), "Ground temperature GPIO pin set failed");
 
     /* Convert the value to a temperature */
-    float resistance = (float)ground_temp_resistor * (1023.0 / (float)sample_buffer - 1.0);
-	*temperature = log(resistance);
-	*temperature = 1 / (0.001129148 + (0.000234125 + (0.0000000876741 * *temperature * *temperature ))* *temperature );
-	*temperature = *temperature - 273.15; // Convert Kelvin to Celcius
+    float resistance = (float)ground_temp_resistor * (1023.0f / (float)sample_buffer - 1.0f);
+    *temperature = logf(resistance);
+    *temperature = 1.0f / (0.001129148f + (0.000234125f + (0.0000000876741f * *temperature * *temperature )) * *temperature);
+    *temperature = *temperature - 273.15f; // Convert Kelvin to Celcius
     
     LOG_DBG("Ground temperature | raw: %d \t resistance: %d.%d \t temperature: %d.%d°C", sample_buffer, (int)resistance, (int)(resistance * 100) % 100, (int)*temperature, (int)(*temperature * 100) % 100);
     

@@ -87,7 +87,7 @@ int sht20_read(float *temperature, float *humidity)
     temperature_raw <<= 8;
     temperature_raw |= dataBuff[1];
 
-    *temperature = ((float)temperature_raw * 0.00268127) - 46.85;
+    *temperature = ((float)temperature_raw * 0.00268127f) - 46.85f;
 
     // humidity
     cmdBuff[0] = SHT20_TRIGGER_RH_MEASURE_HOLD;
@@ -108,7 +108,7 @@ int sht20_read(float *temperature, float *humidity)
     humidity_raw <<= 8;
     humidity_raw |= dataBuff[1];
 
-    *humidity = ((float)humidity_raw * 0.00190734863) - 6;
+    *humidity = ((float)humidity_raw * 0.00190734863f) - 6.0f;
 
     LOG_DBG("Raw data: %02x %02x %02x",
             dataBuff[0], dataBuff[1], dataBuff[2]);

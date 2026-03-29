@@ -1,0 +1,10 @@
+identifier: lrima_greenhouse_nrf52833/nrf52833
+name: LRIMa Greenhouse
+vendor: LRIMa
+type: mcu
+arch: arm
+ram: 128
+flash: 512
+toolchain:
+  - zephyr
+supported: []

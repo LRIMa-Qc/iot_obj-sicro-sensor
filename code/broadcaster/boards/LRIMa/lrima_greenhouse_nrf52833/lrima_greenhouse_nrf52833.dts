@@ -1,6 +1,3 @@
-// Copyright (c) 2023 Nordic Semiconductor ASA
-// SPDX-License-Identifier: Apache-2.0
-
 /dts-v1/;
 #include <nordic/nrf52833_qiaa.dtsi>
 #include "lrima_greenhouse_nrf52833-pinctrl.dtsi"
@@ -28,21 +25,18 @@
 			label = "mcuboot";
 			reg = <0x0 0xc000>;
 		};
+
 		slot0_partition: partition@c000 {
 			label = "image-0";
-			reg = <0xc000 0x32000>;
+			reg = <0xc000 0x38000>;
 		};
-		slot1_partition: partition@3e000 {
+		slot1_partition: partition@44000 {
 			label = "image-1";
-			reg = <0x3e000 0x32000>;
+			reg = <0x44000 0x38000>;
 		};
-		scratch_partition: partition@70000 {
-			label = "image-scratch";
-			reg = <0x70000 0xa000>;
-		};
-		storage_partition: partition@7a000 {
+		storage_partition: partition@7c000 {
 			label = "storage";
-			reg = <0x7a000 0x6000>;
+			reg = <0x7c000 0x4000>;
 		};
 	};
 };
@@ -61,7 +55,7 @@
 };
 
 &i2c1 {
-	compatible = "nordic,nrf-twi";
+	compatible = "nordic,nrf-twim";
 	/* Cannot be used together with spi1. */
 	pinctrl-0 = <&i2c1_default>;
 	pinctrl-1 = <&i2c1_sleep>;
@@ -77,20 +71,11 @@
 };
 
 &gpio1 {
-    status = "okay";
-};
-
-&uart0 {
-	compatible = "nordic,nrf-uart";
-	status = "disabled";
-	current-speed = <115200>;
-	pinctrl-0 = <&uart0_default>;
-	pinctrl-1 = <&uart0_sleep>;
-	pinctrl-names = "default", "sleep";
+	status = "okay";
 };
 
 &i2c0 {
-	compatible = "nordic,nrf-twi";
+	compatible = "nordic,nrf-twim";
 	status = "okay";
 	pinctrl-0 = <&i2c0_default>;
 	pinctrl-1 = <&i2c0_sleep>;
@@ -108,4 +93,12 @@
 	pinctrl-0 = <&pwm0_default>;
 	pinctrl-1 = <&pwm0_sleep>;
 	pinctrl-names = "default", "sleep";
+};
+
+&gpiote {
+	status = "okay";
+};
+
+&uicr {
+	gpio-as-nreset;
 };

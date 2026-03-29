@@ -1,0 +1,5 @@
+# LRIMa Greenhouse nRF52833 board configuration
+
+config BOARD_LRIMA_GREENHOUSE_NRF52833
+	bool "LRIMa_greenhouse_nrf52833"
+	select SOC_NRF52833_QIAA if BOARD_LRIMA_GREENHOUSE_NRF52833_NRF52833

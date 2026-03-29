@@ -66,8 +66,8 @@ int sht31_read(float *temperature, float *humidity)
     *temperature = (float) sensor_value_to_double(&temp);
     *humidity = (float) sensor_value_to_double(&hum);
 
-    LOG_DBG("Temperature: %f", *temperature);
-    LOG_DBG("Humidity: %f", *humidity);
+    LOG_DBG("Temperature: %f", (double)*temperature);
+    LOG_DBG("Humidity: %f", (double)*humidity);
 
     LOG_INF("Read done");
 

@@ -1,0 +1,2 @@
+config BOARD_LRIMA_GREENHOUSE_NRF52833
+	bool "LRIMa_greenhouse_nrf52833"
