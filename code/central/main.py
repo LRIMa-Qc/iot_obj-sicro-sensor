@@ -8,10 +8,13 @@ from device import Device
 from bleakScanning import BleakScanning
 
 # Reboot the device if no data was received for 1 hour
-REBOOT_AFTER_INACTIVE = 60 * 5 # 5min
+REBOOT_AFTER_INACTIVE = 60 * 5  # 5min
 # REBOOT_AFTER_INACTIVE = 4 * 60 * 60 * 1  # 4heure
 
 sensor_iot = AliotObj("central")
+csv_lock = threading.Lock()
+buffered_offline_data = False
+csv_cleared_after_reconnect = True
 
 
 def handle_change_sleep(data):
@@ -22,7 +25,41 @@ def handle_change_sleep(data):
     print(f"New sleep time: {reader.new_sleep_value}")
 
 
+def get_last_received_time() -> float:
+    """Read and normalize last_received_time.txt by keeping the latest valid timestamp only."""
+    default_value = time.time()
+
+    try:
+        with open("last_received_time.txt", "r", encoding="utf-8") as file:
+            raw_content = file.read()
+    except OSError:
+        raw_content = ""
+
+    values = []
+    for part in raw_content.replace(",", "\n").splitlines():
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            values.append(float(part))
+        except ValueError:
+            continue
+
+    last_value = values[-1] if values else default_value
+
+    try:
+        with open("last_received_time.txt", "w", encoding="utf-8") as file:
+            file.write(f"{last_value}")
+    except OSError as exc:
+        print(f"Could not normalize last_received_time.txt: {exc}")
+
+    return last_value
+
+
 def send_data(device: Device):
+    global buffered_offline_data
+    global csv_cleared_after_reconnect
+
     device_data = device.data
     sensors_values = {
         1: 99.99,  # temp
@@ -100,20 +137,34 @@ def send_data(device: Device):
 
     if sensor_iot.connected_to_alivecode:
         sensor_iot.update_doc(doc_json)
+
+        if buffered_offline_data and not csv_cleared_after_reconnect:
+            try:
+                with csv_lock:
+                    with open("data.csv", "w", encoding="utf-8") as f:
+                        f.truncate(0)
+                print("Reconnected to alivecode, cleared offline CSV buffer")
+                buffered_offline_data = False
+                csv_cleared_after_reconnect = True
+            except OSError as exc:
+                print(f"Could not clear data.csv after reconnect: {exc}")
     else:
         print("Not connected to alivecode, saving to CSV")
-        with open("data.csv", "a", encoding="utf-8") as f:
-            f.write(
-                f"{time.time()},"
-                f"{device.index},"
-                f"{sensors_values[1]},"
-                f"{sensors_values[2]},"
-                f"{sensors_values[6]},"
-                f"{sensors_values[3]},"
-                f"{sensors_values[4]},"
-                f"{sensors_values[5]},"
-                f"{sensors_values[254]}\n"
-            )
+        with csv_lock:
+            with open("data.csv", "a", encoding="utf-8") as f:
+                f.write(
+                    f"{time.time()},"
+                    f"{device.index},"
+                    f"{sensors_values[1]},"
+                    f"{sensors_values[2]},"
+                    f"{sensors_values[6]},"
+                    f"{sensors_values[3]},"
+                    f"{sensors_values[4]},"
+                    f"{sensors_values[5]},"
+                    f"{sensors_values[254]}\n"
+                )
+        buffered_offline_data = True
+        csv_cleared_after_reconnect = False
 
 
 def send_logs(msg: str):
@@ -123,6 +174,7 @@ def send_logs(msg: str):
 
     if sensor_iot.connected_to_alivecode:
         sensor_iot.update_component("log", data)
+
 
 def start():
     """Main function"""
@@ -134,20 +186,17 @@ def start():
     # Loop to check last received time
     # if no data was received for 1 hour, reboot the device
     while True:
-        last_received_time = None
-        with open("last_received_time.txt", "r", encoding="utf-8") as file:
-            last_received_time = float(file.read())
+        last_received_time = get_last_received_time()
 
         # Debug
-        if last_received_time is not None:
-            print(time.time() - last_received_time)
+        print(time.time() - last_received_time)
 
         # Check if no data was received for 1 hour
-        if last_received_time is not None and (time.time() - last_received_time) > REBOOT_AFTER_INACTIVE:
+        if (time.time() - last_received_time) > REBOOT_AFTER_INACTIVE:
             print(f"Restarting bluetooth service, no data received for {REBOOT_AFTER_INACTIVE} seconds")
             os.system("sudo systemctl restart bluetooth")
             os.system("pm2 restart all")
-            sys.exit() # quit
+            sys.exit()  # quit
 
         # Sleep for 1 minute
         time.sleep(60)
