@@ -37,6 +37,7 @@
 typedef struct {
 	float temp;
 	float hum;
+    float co2;
 	float lum;
 	float gnd_temp;
 	float gnd_hum;

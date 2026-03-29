@@ -44,7 +44,7 @@ K_TIMER_DEFINE(advertising_timer, ble_adv_timer_handler, NULL);
 #endif
 
 /** Service data array for the broadcast*/
-static uint8_t service_data[22] = {0};
+static uint8_t service_data[25] = {0};
 
 /** MAC address object for the advertising*/
 static bt_addr_le_t addr;
@@ -350,10 +350,13 @@ int ble_encode_adv_data(sensors_data_t *sensors_data) {
     /* Setting data */
     LOG_IF_ERR(ble_encode_pair(4, TEMP_ID, &sensors_data->temp), "Unable to encode temperature");
     LOG_IF_ERR(ble_encode_pair(7, HUM_ID, &sensors_data->hum), "Unable to encode humidity");
-    LOG_IF_ERR(ble_encode_pair(10, LUM_ID, &sensors_data->lum), "Unable to encode luminosity");
-    LOG_IF_ERR(ble_encode_pair(13, GND_TEMP_ID, &sensors_data->gnd_temp), "Unable to encode ground temperature");
-    LOG_IF_ERR(ble_encode_pair(16, GND_HUM_ID, &sensors_data->gnd_hum), "Unable to encode ground humidity");
-    LOG_IF_ERR(ble_encode_pair(19, BAT_ID, &sensors_data->bat), "Unable to encode battery");
+    /* CO2 is encoded as ppm/10 so it fits the existing 1-byte whole + 1-byte decimal format. */
+    float co2_div10 = sensors_data->co2 / 10.0f;
+    LOG_IF_ERR(ble_encode_pair(10, CO2_ID, &co2_div10), "Unable to encode co2");
+    LOG_IF_ERR(ble_encode_pair(13, LUM_ID, &sensors_data->lum), "Unable to encode luminosity");
+    LOG_IF_ERR(ble_encode_pair(16, GND_TEMP_ID, &sensors_data->gnd_temp), "Unable to encode ground temperature");
+    LOG_IF_ERR(ble_encode_pair(19, GND_HUM_ID, &sensors_data->gnd_hum), "Unable to encode ground humidity");
+    LOG_IF_ERR(ble_encode_pair(22, BAT_ID, &sensors_data->bat), "Unable to encode battery");
 
     LOG_DBG("Data encoded");
 

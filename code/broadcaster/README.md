@@ -65,6 +65,29 @@ The user can wake up the device at any time by pressing the button1.
 The broadcaster will send the data at the interval specified in `CONFIG_SENSOR_SLEEP_DURATION_SEC` or at the interval set by the user using the connectable part. The broadcaster will send a beacon using the BLE extended advertising protocol (`BLE 5.0`) for the duration specified in `CONFIG_BLE_ADV_DURATION_SEC`. The beacon will contain the following information:
 ![Broadcaster data.](/doc/img/broadcaster-data.png)
 
+#### Broadcast payload (service data)
+
+The broadcast service data is now 25 bytes long and is encoded as follows:
+
+| Byte(s) | Description |
+| --- | --- |
+| 0-1 | Broadcast service UUID bytes (`0xAB`, `0xCD`) |
+| 2 | Reserved (currently `0`) |
+| 3 | Packet counter |
+| 4-6 | Temperature: id=`1`, whole, decimal |
+| 7-9 | Humidity: id=`2`, whole, decimal |
+| 10-12 | CO2: id=`6`, whole, decimal (value is `ppm / 10`) |
+| 13-15 | Luminosity: id=`3`, whole, decimal |
+| 16-18 | Ground temperature: id=`4`, whole, decimal |
+| 19-21 | Ground humidity: id=`5`, whole, decimal |
+| 22-24 | Battery: id=`254`, whole, decimal |
+
+Notes:
+
+- Each measurement uses 3 bytes: `id`, `whole`, `decimal`.
+- For negative values, sign is stored in the decimal byte: if decimal >= 100, subtract 100 from decimal and apply a negative sign.
+- CO2 is encoded as `ppm / 10` to fit this generic 2-byte numeric format. To decode CO2 in ppm: `(whole + decimal/100) * 10`.
+
 ### Connectable
 
 The connectable part will only be active if `CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED=y` and will be visible for the same time as the broadcaster. However, if you are connected to the device, it will stay active until you disconnect or the inactivity timer is reached (`CONFIG_BLE_CONN_TIMEOUT_SEC`). The connectable part will advertise using `GATT` a service with the following UUID `0xAFBE` and with the following characteristics:

@@ -11,7 +11,11 @@
 
 LOG_MODULE_REGISTER(SHT31, CONFIG_SHT31_LOG_LEVEL); /* Register the module for log */
 
+#if DT_HAS_COMPAT_STATUS_OKAY(sensirion_sht3xd)
 const struct device *const sht31 = DEVICE_DT_GET_ONE(sensirion_sht3xd);
+#else
+const struct device *const sht31 = NULL;
+#endif
 
 static bool isInitialized = false; /* Is the sensor initialized? */
 
@@ -25,6 +29,11 @@ int sht31_init()
     if(isInitialized) {
         LOG_WRN("device already initialized");
         return 0;
+    }
+
+    if (sht31 == NULL) {
+        LOG_WRN("No SHT31 node in devicetree");
+        return 1;
     }
 
     LOG_INF("init");

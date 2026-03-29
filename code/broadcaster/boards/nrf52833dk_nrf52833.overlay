@@ -110,6 +110,20 @@
         reg = <0x38>;
         label = "AHT20";
     };
+
+    sht4x: sht4x@44 {
+        compatible = "sensirion,sht4x";
+        reg = <0x44 >;
+        repeatability = <2>;
+        label = "SHT4X";
+    };
+
+    stcc4: stcc4@64 {
+        compatible = "sensirion,stcc4";
+        reg = <0x64>;
+        measurement-mode = <0>;
+        label = "STCC4";
+    };
 };
 
 /* Deactivating some stuff */

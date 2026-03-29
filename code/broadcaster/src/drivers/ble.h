@@ -29,6 +29,7 @@
 
 #define TEMP_ID 1
 #define HUM_ID 2
+#define CO2_ID 6
 #define LUM_ID 3
 #define GND_TEMP_ID 4
 #define GND_HUM_ID 5

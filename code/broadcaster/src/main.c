@@ -13,6 +13,8 @@
 #include "drivers/aht20.h"
 #include "drivers/sht20.h"
 #include "drivers/sht31.h"
+#include "drivers/sht4x.h"
+#include "drivers/stcc4.h"
 #include "drivers/ble.h"
 #include "drivers/led.h"
 #include "drivers/button.h"
@@ -26,6 +28,7 @@ LOG_MODULE_REGISTER(MAIN, CONFIG_MAIN_LOG_LEVEL);
 sensors_data_t sensors_data = {
 	.temp = 0,
 	.hum = 0,
+	.co2 = 0,
 	.lum = 0,
 	.gnd_temp = 0,
 	.gnd_hum = 0,
@@ -43,6 +46,8 @@ static uint64_t initial_timestamp = 0;
 
 //Pointer to the current i2c temperature and humidity sensor
 static int (*ptr_temp_hum_read)(float *, float *);
+// Pointer to optional co2 sensor read function
+static int (*ptr_co2_read)(float *);
 
 static void check_and_reboot_if_week_elapsed(void) {
     uint64_t current_timestamp = k_uptime_get();
@@ -63,6 +68,8 @@ static void read(void) {
 	// Read the temperature and humidity
 	if (ptr_temp_hum_read != NULL) { LOG_IF_ERR(ptr_temp_hum_read(&sensors_data.temp, &sensors_data.hum), "Unable to read temperature and humidity"); }
 	else LOG_WRN("No temperature and humidity sensor found");
+	if (ptr_co2_read != NULL) { LOG_IF_ERR(ptr_co2_read(&sensors_data.co2), "Unable to read co2"); }
+	else sensors_data.co2 = 0;
 	// Read the luminosity
 	LOG_IF_ERR(luminosity_read(&sensors_data.lum), "Unable to read luminosity");
 	// Read the ground temperature
@@ -101,6 +108,22 @@ static int init_temp_hum_sensor(void) {
 	// Sleeping for 1000ms to wait for the sensor to wake up
 	k_sleep(K_MSEC(1000));
 
+	ptr_co2_read = NULL;
+
+	// Try to initialize the STCC4 sensor
+	if(!stcc4_init()) {
+		LOG_INF("STCC4 sensor initialized");
+		ptr_temp_hum_read = &stcc4_read;
+		ptr_co2_read = &stcc4_read_co2;
+		return 0;
+	}
+	// Try to initialize the SHT4X sensor
+	if(!sht4x_init()) {
+		LOG_INF("SHT4X sensor initialized");
+		ptr_temp_hum_read = &sht4x_read;
+		return 0;
+	}
+
 	// Try to initialize the AHT20 sensor
 	if(!aht20_init()) {
 		LOG_INF("AHT20 sensor initialized");
@@ -123,6 +146,7 @@ static int init_temp_hum_sensor(void) {
 	// No sensor found
 	LOG_WRN("No temperature and humidity sensor found");
 	ptr_temp_hum_read = NULL;
+	ptr_co2_read = NULL;
 	return 1;
 }
 
