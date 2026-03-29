@@ -6,7 +6,7 @@ import subprocess
 import os
 import sys
 from collections import OrderedDict
-from bleak import BleakClient, BleakScanner, BleakError
+from bleak import BleakClient, BleakScanner, BleakError, BleakGATTProtocolError
 from device import Device
 
 # --- Constants ---
@@ -151,11 +151,15 @@ class BleakScanning:
     async def __start_scan_until_write(self):
         async with self.scan_lock:
             try:
-                scanner = BleakScanner(
-                    detection_callback=self.detection_callback,
-                    adapter=self.__adapter,
-                    cb={"use_bdaddr": True},  # use_bdaddr is a workaround for macOS
-                )
+                # Build scanner kwargs - use bluez parameter for Bleak 3.0+
+                scanner_kwargs = {
+                    "detection_callback": self.detection_callback,
+                    "cb": {"use_bdaddr": True},  # use_bdaddr is a workaround for macOS
+                }
+                if self.__adapter:
+                    scanner_kwargs["bluez"] = {"adapter": self.__adapter}
+
+                scanner = BleakScanner(**scanner_kwargs)
 
                 async with scanner:
                     await scanner.stop()  # Ensure clean start
@@ -228,6 +232,9 @@ class BleakScanning:
                 print(f"[Connection Timeout] {device.name} [{device.address}]")
             except EOFError:
                 print(f"[Connection Close Error] {device.name} [{device.address}]")
+            except BleakGATTProtocolError as e:
+                # GATT protocol errors in Bleak 3.0+ are wrapped in BleakGATTProtocolError
+                print(f"[GATT Protocol Error] {device.name} [{device.address}]: Code {e.code} - {e!r}")
             except (BleakError, ValueError) as e:
                 print(f"[Write Failed] {device.name} [{device.address}]: {e!r}")
 
