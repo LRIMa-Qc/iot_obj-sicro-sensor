@@ -6,18 +6,20 @@ Authors : LRIMa (Laboratoire de Recherche Informatique de Maisonneuve)
 
 ```bash
 code/
-├── actioneur    (esp32 code)
-├── broadcaster  (sensor code [nrf52833])
-├── central      (python serial to ALIVEcode)
-└── central-nrf  (BLE reciver [nrf52840dongle])
-schematics/
-├── SICRO-Main-easyEDA.zip (Main Schematic)
-└── SICRO-Ground-easyEDA.zip (Ground part Schematic)
+├── actioneur       (esp32 code)
+├── broadcaster     (sensor code [nrf52833])
+├── central         (python BLE scanning and ALIVEcode integration)
+└── central-nrf     (BLE receiver [nrf52840dongle])
+schematic/
+├── lrima-main/     (Main board KiCad project)
+└── lrima-ground/   (Ground board KiCad project)
+models/
+└── sensor-casing/  (3D CAD models for enclosure)
 ```
 
 ### Physical device
 
-The schematics and PCB were made using [EasyEDA Pro](https://pro.easyeda.com/) site
+The schematics and PCB were designed using [KiCad](https://www.kicad.org/) EDA software
 There is a protective layer that needs to be applied on the ground part of the pcb to prevent corrosion
 
 ## Building
@@ -27,9 +29,10 @@ There is a protective layer that needs to be applied on the ground part of the p
 - VS Code
 - [nRF Connect](https://www.nordicsemi.com/Products/Development-tools/nrf-connect-for-desktop)
 - [nRF Connect VS Code extension](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-VS-Code)
-- nRF toolchian `v2.4.0`
-- nRF SDK `v.2.4.0`
+- nRF toolchain `v3.2.4`
+- nRF SDK `v3.2.4`
 - J-Link
+- Python 3.8+ (for central application)
 
 #### Broadcaster
 
@@ -39,16 +42,33 @@ Before building the broadcaster program, you **must** make sure that you changed
 
 ##### Building
 
-To build the program for the nrf52833 you need to use the [NRFconnect](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-VS-Code) extension in vscode and then you just have to [follow the instructions](https://nrfconnect.github.io/vscode-nrf-connect/get_started/build_app_ncs.html#how-to-build-an-application) to build it using the `lrima_greenhouse_nrf52833` board. After you need to flash it using the [option available in the extension](https://nrfconnect.github.io/vscode-nrf-connect/get_started/quick_debug.html#how-to-flash-an-application). Note : If the board is giving out an error when flashing, use the `erase and flash` option.
+The broadcaster uses the **sysbuild** system from NCS v3.2.4. To build the program for the nrf52833 using the [nRF Connect VS Code extension](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-VS-Code):
+
+1. Open the broadcaster folder in VS Code
+2. Use the nRF Connect extension to build using the `lrima_greenhouse_nrf52833` board
+3. Flash using the [extension flashing options](https://nrfconnect.github.io/vscode-nrf-connect/get_started/quick_debug.html#how-to-flash-an-application)
+
+Note: If flashing fails, use the `erase and flash` option to perform a full erase first.
 
 ###### J-Link setup
 
 ![J-Link setup](doc/img/J-Link-Pin-2.jpg)
 ![J-Link setup 2](doc/img/J-Link-Pin-3.jpg)
+![J-Link setup 3](doc/img/J-Link-Pin.png)
 
 #### Firmware over the air update (DFU)
 
-The board comes with the option to send over the air updates (ota). To prepare an update you just need to build the program like in the previous section. You need after to send the `app_update.bin` file that is located in the `build\zephyr` folder to your phone. You then need to keep press the button1 (see picture) until the led is on and then release it. You will now have 60 seconds, or more if you change the value of `CONFIG_BLE_DFU_ADV_DURATION_SEC` to start the flashing process. To do so, you will need to use the [nRF Connect mobile app](https://www.nordicsemi.com/Products/Development-tools/nrf-connect-for-mobile) and connect to the device with the name specified in `CONFIG_BLE_USER_DEFINED_NAME`. You will then need to go in the `DFU` tab and select the `app_update.bin` file. Finally, press the `Upload` button. The flashing process will start and you will be able to see the progress in the app. When the flashing is done, the board will reboot and the new program will start.
+The board supports over-the-air firmware updates. To prepare an update:
+
+1. Build the application as described above
+2. Locate the `app_update.bin` file in the `build/zephyr` folder
+3. Transfer this file to your phone
+4. Press and hold button1 until the LED is on, then release
+5. You will have up to 60 seconds (configurable via `CONFIG_BLE_DFU_ADV_DURATION_SEC`) to start the update
+6. Use the [nRF Connect mobile app](https://www.nordicsemi.com/Products/Development-tools/nrf-connect-for-mobile) to connect to the device (named with your `CONFIG_BLE_USER_DEFINED_NAME`)
+7. Go to the `DFU` tab and select the `app_update.bin` file
+8. Press `Upload` and monitor the progress
+
 ![Button1](doc/img/Button1.png)
 
 #### Device Functionality
@@ -57,8 +77,24 @@ The device is split in two parts, the broadcaster and the connectable. The broad
 
 ##### Broadcaster
 
-The broadcaster will send the data at the interval specified in `CONFIG_SENSOR_SLEEP_DURATION_SEC` or at the interval set by the user using the connectable part. The broadcaster will send a beacon using the BLE extended advertising protocol (`BLE 5.0`) for the duration specified in `CONFIG_BLE_ADV_DURATION_SEC`. The beacon will contain the following information:
+The broadcaster collects sensor data and transmits it via BLE 5.0 extended advertising:
+
+**Supported sensors:**
+
+- Temperature/Humidity (SHT4X)
+- Soil temperature/moisture/conductivity (STCC4)
+- CO2 concentration
+
+**Transmission behavior:**
+
+- Sends data at intervals specified by `CONFIG_SENSOR_SLEEP_DURATION_SEC`
+- Intervals can be modified via the connectable service
+- Uses BLE extended advertising for the duration specified in `CONFIG_BLE_ADV_DURATION_SEC`
+- Beacon payload structure is shown below:
+
 ![Broadcaster data.](doc/img/broadcaster-data.png)
+
+> **Note:** The diagram above does not include the CO2 sensor data. CO2 concentration is transmitted as an additional sensor value in the beacon payload. (value needs to be multiplied by 10 to get the actual concentration in ppm)
 
 ##### Connectable
 
@@ -69,12 +105,52 @@ The connectable part will only be active if `CONFIG_SENSOR_SLEEP_MODIFICATION_EN
 
 ### Central-nrf
 
-To build the program for the nrf52840dongle you need to use the [NRFconnect](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-VS-Code) extension in vscode and then you just have to follow the [instrution](https://nrfconnect.github.io/vscode-nrf-connect/get_started/build_app_ncs.html#how-to-build-an-application) to build it using the `lrima_greenhouse_nrf52833` board. After you need to flash it using the nrf programer tools available in the nrf Connect for desktop programs. You will need to put the board in [DFU mode](https://infocenter.nordicsemi.com/index.jsp?topic=%2Fug_nrf52840_dongle%2FUG%2Fnrf52840_Dongle%2Fprogramming.html). The file need for the flashing will be under the following path `build\zephyr\zephyr.hex`.
+The central-nrf firmware runs on the nRF52840 dongle to receive BLE broadcasts from the broadcaster.
 
-### Running
+**Building:**
 
-To run the sensor you will need first to plug the Central-nrf in a computer or raspberry pi and then you will need to setup the config.ini file from the `central` folder. In the config.ini you will have to specify the `object id` and the `auth token` that can be found in your IoT project on [ALIVEcode.ca](ALIVEcode.ca)
+1. Use the [nRF Connect VS Code extension](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-VS-Code) to build for `nrf52840dongle_nrf52840` board
+2. Flash using the nRF Connect for Desktop programmer tools
+3. Put the device in [DFU mode](https://infocenter.nordicsemi.com/index.jsp?topic=%2Fug_nrf52840_dongle%2FUG%2Fnrf52840_Dongle%2Fprogramming.html)
+4. Flash the `build/zephyr/zephyr.hex` file
 
-Afterward you have to install the dependency using the `pip install -r requirements.txt` command. (Using a venv is suggested.)
-When it's done, you can run the project using the command. `python main.py`
-When the python program is running, you can now power on the broadcaster.
+### Central (Python Application)
+
+The central application handles BLE scanning, data collection, and integration with ALIVEcode.
+
+**Core modules:**
+
+- `core/storage.py` - Persistent data management
+- `core/payload.py` - Sensor data parsing and validation
+- `core/aliot_sync.py` - ALIVEcode cloud integration
+- `core/health.py` - System health monitoring
+- `core/config.py` - Configuration management
+
+**Setup and running:**
+
+1. Plug the Central-nrf dongle into a computer or Raspberry Pi
+2. Configure the application:
+   - Copy `config.ini.example` to `config.ini`
+   - Set your `object_id` and `auth_token` from your [ALIVEcode.ca](https://ALIVEcode.ca) IoT project
+
+3. Install dependencies:
+
+   ```bash
+   # For Raspberry Pi 4
+   pip install -r requirements_pi4.txt
+
+   # For Raspberry Pi 5
+   pip install -r requirements_pi5.txt
+   ```
+
+   (Using a Python virtual environment is recommended)
+
+4. Run the application:
+
+   ```bash
+   python main.py
+   ```
+
+5. Power on the broadcaster devices
+
+The application will automatically scan for and connect to broadcaster devices, collecting sensor data and synchronizing with ALIVEcode.
