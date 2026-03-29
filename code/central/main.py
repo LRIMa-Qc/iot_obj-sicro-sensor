@@ -27,24 +27,39 @@ def send_data(device: Device):
     sensors_values = {
         1: 99.99,  # temp
         2: 99.99,  # hum
+        6: 99.99,  # co2 (stored as ppm)
         3: 99.99,  # lum
         4: 99.99,  # gnd temp
         5: 99.99,  # gnd hum
         254: 99.99,  # bat
     }
 
-    data_mapping = {1: (3, 4), 2: (6, 7), 3: (9, 10), 4: (12, 13), 5: (15, 16), 254: (18, 19)}
+    # Payload after the packet id is encoded in triplets: [sensor_id, whole, decimal].
+    # Parsing by triplet keeps compatibility with both legacy packets (without CO2)
+    # and newer packets (with CO2 inserted in the sequence).
+    for i in range(2, len(device_data), 3):
+        if i + 2 >= len(device_data):
+            break
 
-    for sensor, (index1, index2) in data_mapping.items():
-        whole_val = device_data[index1]
-        decimal_val = device_data[index2]
+        sensor = device_data[i]
+        if sensor not in sensors_values:
+            continue
+
+        whole_val = device_data[i + 1]
+        decimal_val = device_data[i + 2]
 
         # Set the negative value
         if decimal_val > 99:
             decimal_val = decimal_val - 100
             whole_val = whole_val * -1
 
-        sensors_values[sensor] = round(whole_val + (decimal_val / 100), 2)
+        decoded_value = round(whole_val + (decimal_val / 100), 2)
+
+        # CO2 is packed as ppm/10 on the broadcaster side to fit the transport format.
+        if sensor == 6:
+            decoded_value = round(decoded_value * 10, 2)
+
+        sensors_values[sensor] = decoded_value
 
     # print("Values received from device " + str(device.index))
     # print(f"\tTemperature: {sensors_values[1]}")
@@ -75,6 +90,7 @@ def send_data(device: Device):
     doc_json = {
         f"{path}/humidity": sensors_values[2],
         f"{path}/temperature": sensors_values[1],
+        f"{path}/co2": sensors_values[6],
         f"{path}/luminosite": sensors_values[3],
         f"{path}/gnd_temperature": sensors_values[4],
         f"{path}/gnd_humidity": sensors_values[5],
@@ -92,6 +108,7 @@ def send_data(device: Device):
                 f"{device.index},"
                 f"{sensors_values[1]},"
                 f"{sensors_values[2]},"
+                f"{sensors_values[6]},"
                 f"{sensors_values[3]},"
                 f"{sensors_values[4]},"
                 f"{sensors_values[5]},"

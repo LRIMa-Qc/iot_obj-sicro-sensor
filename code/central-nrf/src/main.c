@@ -42,7 +42,7 @@ LOG_MODULE_REGISTER(MAIN, CONFIG_MAIN_LOG_LEVEL);
 // UART defines
 #define NAME_LEN 30
 #define DATA_LEN 30
-#define MAX_MYRIO_DATA_LEN 60
+#define MAX_MYRIO_DATA_LEN 80
 
 #define MAX_DATA_LEN 255
 
@@ -81,6 +81,7 @@ static void initValueDict() {
 	valueDict[0] = 'P'; // Packet number
 	valueDict[1] = 'T'; // Temperature
 	valueDict[2] = 'H'; // Humidity
+	valueDict[6] = 'C'; // CO2
 	valueDict[3] = 'L'; // Luminoisty
 	valueDict[4] = 'S'; // Humidity GND
 	valueDict[5] = 'V'; // Temperature GND
@@ -114,7 +115,7 @@ int convertArray(uint8_t* array, size_t length, char* result, size_t resultSize)
 
 /**
  * @brief Convert the data received from the sensor to a string for the Myrio
- * Ex : I=01P=254T=25.40H=50.00L=100.00S=000.00V=000.00B=10.20
+ * Ex : I=01P=254T=25.40H=50.00C=42.50L=100.00S=000.00V=000.00B=10.20
  * 
  * @param array
  * @param length
