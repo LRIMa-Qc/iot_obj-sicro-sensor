@@ -9,11 +9,12 @@
 #ifndef SHT4X_H_
 #define SHT4X_H_
 
-#include <zephyr/kernel.h>
-#include <zephyr/logging/log.h>
+#include "../utils.h"
 #include <zephyr/device.h>
 #include <zephyr/drivers/sensor.h>
-#include "../utils.h"
+#include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
+
 
 int sht4x_init(void);
 

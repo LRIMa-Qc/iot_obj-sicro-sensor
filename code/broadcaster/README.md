@@ -69,18 +69,18 @@ The broadcaster will send the data at the interval specified in `CONFIG_SENSOR_S
 
 The broadcast service data is now 25 bytes long and is encoded as follows:
 
-| Byte(s) | Description |
-| --- | --- |
-| 0-1 | Broadcast service UUID bytes (`0xAB`, `0xCD`) |
-| 2 | Reserved (currently `0`) |
-| 3 | Packet counter |
-| 4-6 | Temperature: id=`1`, whole, decimal |
-| 7-9 | Humidity: id=`2`, whole, decimal |
-| 10-12 | CO2: id=`6`, whole, decimal (value is `ppm / 10`) |
-| 13-15 | Luminosity: id=`3`, whole, decimal |
-| 16-18 | Ground temperature: id=`4`, whole, decimal |
-| 19-21 | Ground humidity: id=`5`, whole, decimal |
-| 22-24 | Battery: id=`254`, whole, decimal |
+| Byte(s) | Description                                       |
+| ------- | ------------------------------------------------- |
+| 0-1     | Broadcast service UUID bytes (`0xAB`, `0xCD`)     |
+| 2       | Reserved (currently `0`)                          |
+| 3       | Packet counter                                    |
+| 4-6     | Temperature: id=`1`, whole, decimal               |
+| 7-9     | Humidity: id=`2`, whole, decimal                  |
+| 10-12   | CO2: id=`6`, whole, decimal (value is `ppm / 10`) |
+| 13-15   | Luminosity: id=`3`, whole, decimal                |
+| 16-18   | Ground temperature: id=`4`, whole, decimal        |
+| 19-21   | Ground humidity: id=`5`, whole, decimal           |
+| 22-24   | Battery: id=`254`, whole, decimal                 |
 
 Notes:
 
