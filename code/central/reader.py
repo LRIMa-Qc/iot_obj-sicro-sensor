@@ -1,5 +1,5 @@
 from threading import Thread
-from queue import Queue
+from queue import Queue, Full, Empty
 from time import sleep
 import serial, re
 
@@ -8,11 +8,13 @@ from device import Device
 
 class Reader:
 
+    INPUT_BUFFER_MAX_SIZE = 500
+
     def __init__(self, port, baudrate, send_data_cb, send_logs_cb, log_all: bool) -> None:
         self.__ser = serial.Serial(port, baudrate)
         self.__send_data_cb = send_data_cb
         self.__send_logs_cb = send_logs_cb
-        self.__input_buffer = Queue()
+        self.__input_buffer = Queue(maxsize=self.INPUT_BUFFER_MAX_SIZE)
         self.__devices = {}
         self.__sleep_time = 0.01
         self.__log_all = log_all
@@ -20,7 +22,7 @@ class Reader:
         self.__read_thread = Thread(target=self.__read, daemon=True)
         self.__read_thread.start()
 
-        self.__input_buffer_parser_thread = Thread(target=self.__input_buffer_parser)
+        self.__input_buffer_parser_thread = Thread(target=self.__input_buffer_parser, daemon=True)
         self.__input_buffer_parser_thread.start()
 
     def __read(self):
@@ -53,7 +55,18 @@ class Reader:
                 continue
 
             # Add the data to the input buffer so it's treated in order
-            self.__input_buffer.put(line)
+            try:
+                self.__input_buffer.put_nowait(line)
+            except Full:
+                try:
+                    self.__input_buffer.get_nowait()
+                except Empty:
+                    pass
+
+                try:
+                    self.__input_buffer.put_nowait(line)
+                except Full:
+                    pass
 
     def __input_buffer_parser(self) -> None:
         """Parse the input buffer"""
@@ -62,7 +75,11 @@ class Reader:
                 sleep(self.__sleep_time)
                 continue
 
-            line = self.__input_buffer.get(0)  # Get the data from the input buffer
+            try:
+                line = self.__input_buffer.get(0)  # Get the data from the input buffer
+            except Empty:
+                sleep(self.__sleep_time)
+                continue
 
             print("\033[32mDATA: {}\033[0m".format(line))
 
@@ -117,3 +134,13 @@ class Reader:
         string = string.replace("^[", "")  # Remove the specified string
 
         return string
+
+    def close(self) -> None:
+        if self.__ser is not None and self.__ser.is_open:
+            self.__ser.close()
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass

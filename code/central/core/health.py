@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+import subprocess
 import sys
 import time
 from collections.abc import Callable
@@ -38,8 +38,14 @@ class InactivityWatchdog:
 
             if (time.time() - last_received_time) > self.reboot_after_inactive:
                 print("Restarting bluetooth service, no data received for " f"{self.reboot_after_inactive} seconds")
-                os.system("sudo systemctl restart bluetooth")
-                os.system("pm2 restart all")
+                self._run_restart_command(["sudo", "systemctl", "restart", "bluetooth"])
+                self._run_restart_command(["pm2", "restart", "all"])
                 sys.exit()
 
             time.sleep(60)
+
+    def _run_restart_command(self, command: list[str]) -> None:
+        try:
+            subprocess.run(command, check=True, timeout=10)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            print(f"Restart command failed {command}: {exc}")
