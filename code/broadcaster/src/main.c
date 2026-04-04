@@ -8,7 +8,9 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/settings/settings.h>
 #include <zephyr/sys/reboot.h>
+#include <string.h>
 #include "drivers/adc.h"
 #include "drivers/aht20.h"
 #include "drivers/sht20.h"
@@ -40,7 +42,7 @@ bool first_run = true;
 
 /* Sleep time bettwen iterations*/
 static uint16_t sleep_time = CONFIG_SENSOR_SLEEP_DURATION_SEC;
-/* Time spent sleeping */
+static uint16_t persisted_sleep_time = CONFIG_SENSOR_SLEEP_DURATION_SEC;
 static uint16_t sleep_time_spent = 0;
 static uint64_t initial_timestamp = 0;
 
@@ -48,6 +50,77 @@ static uint64_t initial_timestamp = 0;
 static int (*ptr_temp_hum_read)(float *, float *);
 // Pointer to optional co2 sensor read function
 static int (*ptr_co2_read)(float *);
+
+static uint16_t clamp_sleep_time_value(uint16_t value) {
+	if (value < 1U) {
+		return 1U;
+	}
+
+#if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
+	if (value > CONFIG_SENSOR_SLEEP_DURATION_MAX_SEC) {
+		return CONFIG_SENSOR_SLEEP_DURATION_MAX_SEC;
+	}
+#endif
+
+	return value;
+}
+
+static int sleep_time_settings_set(const char *name, size_t len_rd,
+					   settings_read_cb read_cb, void *cb_arg) {
+	uint16_t loaded_value;
+
+	if (strcmp(name, "sleep_time") != 0) {
+		return -ENOENT;
+	}
+
+	if (len_rd != sizeof(loaded_value)) {
+		LOG_WRN("Invalid stored sleep_time size: %u", (unsigned int)len_rd);
+		return -EINVAL;
+	}
+
+	int rc = read_cb(cb_arg, &loaded_value, sizeof(loaded_value));
+	if (rc < 0) {
+		LOG_ERR("Unable to read stored sleep_time (%d)", rc);
+		return rc;
+	}
+
+	sleep_time = clamp_sleep_time_value(loaded_value);
+	persisted_sleep_time = sleep_time;
+
+	LOG_INF("Loaded persisted sleep_time: %u", sleep_time);
+
+	return 0;
+}
+
+SETTINGS_STATIC_HANDLER_DEFINE(app_settings, "app", NULL,
+			       sleep_time_settings_set, NULL, NULL);
+
+static int load_sleep_time_settings(void) {
+	RET_IF_ERR(settings_subsys_init(), "Unable to initialize settings subsystem");
+
+	int rc = settings_load_subtree("app");
+	if (rc) {
+		LOG_ERR("Unable to load app settings (%d)", rc);
+		return rc;
+	}
+
+	return 0;
+}
+
+static int save_sleep_time_settings(void) {
+	if (sleep_time == persisted_sleep_time) {
+		return 0;
+	}
+
+	sleep_time = clamp_sleep_time_value(sleep_time);
+	RET_IF_ERR(settings_save_one("app/sleep_time", &sleep_time, sizeof(sleep_time)),
+		   "Unable to save sleep_time setting");
+
+	persisted_sleep_time = sleep_time;
+	LOG_INF("Persisted sleep_time: %u", sleep_time);
+
+	return 0;
+}
 
 static void check_and_reboot_if_week_elapsed(void) {
     uint64_t current_timestamp = k_uptime_get();
@@ -168,6 +241,8 @@ int main(void) {
 	LOG_IF_ERR(init_temp_hum_sensor(), "Unable to initialize temperature and humidity sensor");
 	// Initialize the BLE driver
 	LOG_IF_ERR(ble_init(&sleep_time), "Unable to initialize BLE");
+	// Load the persisted sleep time setting
+	LOG_IF_ERR(load_sleep_time_settings(), "Unable to load sleep time settings");
 
 	LOG_INF("All drivers initialized");
 
@@ -187,6 +262,8 @@ int main(void) {
 
 		// Send the sensors data
 		send();
+
+		LOG_IF_ERR(save_sleep_time_settings(), "Unable to persist sleep time");
 
 		// Wait
 		sleep_time_spent = 0;
