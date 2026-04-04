@@ -11,6 +11,7 @@
 
 #include "ble.h"
 #include "../payload.h"
+#include "../utils/app_settings.h"
 
 LOG_MODULE_REGISTER(BLE_DRIVER, CONFIG_BLE_DRIVER_LOG_LEVEL);
 
@@ -53,15 +54,6 @@ static void ble_conn_timeout_timer_handler(struct k_timer *timer_id)
 	}
 }
 #endif
-
-static const struct bt_data adv_data[] = {
-#if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
-	BT_DATA_BYTES(BT_DATA_UUID16_ALL, BT_UUID_16_ENCODE(SLEEP_TIME_SERVICE_UUID)),
-#endif
-	BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
-	BT_DATA(BT_DATA_SVC_DATA16, service_data, sizeof(service_data)),
-};
 
 static const struct bt_le_adv_param adv_param = {
 	.options = BT_LE_ADV_OPT_EXT_ADV | BT_LE_ADV_OPT_USE_IDENTITY
@@ -242,14 +234,23 @@ BT_GATT_SERVICE_DEFINE(sleep_time_service,
 
 static void ble_start_adv(int err)
 {
+	const char *device_name = app_settings_get_device_name();
+	size_t device_name_len = strlen(device_name);
+
+	if (device_name_len == 0U) {
+		LOG_WRN("Persisted device name is empty, using build default");
+		device_name = CONFIG_BLE_USER_DEFINED_NAME;
+		device_name_len = strlen(device_name);
+	}
+
 	if (err) {
 		LOG_ERR("Bluetooth failed to enable (err %d)", err);
 		current_state = BLE_STATE_IDLE;
 		return;
 	}
 
-	LOG_INF("Starting advertising");
-	LOG_IF_ERR(bt_set_name(DEVICE_NAME), "Unable to set broadcaster device name");
+	LOG_INF("Starting advertising with name: %s", device_name);
+	LOG_IF_ERR(bt_set_name(device_name), "Unable to set broadcaster device name");
 
 	LOG_IF_ERR(bt_le_ext_adv_create(&adv_param, NULL, &ext_adv), "Advertising failed to create");
 
@@ -257,6 +258,15 @@ static void ble_start_adv(int err)
 	service_data[1] = BROADCAST_SERVICE_UUID_2;
 	service_data[2] = (uint8_t)(counter & 0xFFU);
 	service_data[3] = (uint8_t)((counter >> 8) & 0xFFU);
+
+	const struct bt_data adv_data[] = {
+#if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
+		BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
+		BT_DATA_BYTES(BT_DATA_UUID16_ALL, BT_UUID_16_ENCODE(SLEEP_TIME_SERVICE_UUID)),
+#endif
+		BT_DATA(BT_DATA_NAME_COMPLETE, device_name, device_name_len),
+		BT_DATA(BT_DATA_SVC_DATA16, service_data, sizeof(service_data)),
+	};
 
 	LOG_IF_ERR(bt_le_ext_adv_set_data(ext_adv, adv_data, ARRAY_SIZE(adv_data), NULL, 0),
 		   "Advertising failed to set data");
@@ -287,7 +297,9 @@ int ble_init(uint16_t *sleep_time_ptr)
 	sleep_time = sleep_time_ptr;
 #endif
 
-	RET_IF_ERR(bt_addr_le_from_str(CONFIG_BLE_USER_DEFINED_MAC_ADDR, "random", &addr),
+	const char *device_mac = app_settings_get_device_mac();
+	LOG_INF("Using device MAC: %s", device_mac);
+	RET_IF_ERR(bt_addr_le_from_str(device_mac, "random", &addr),
 		   "Unable to convert MAC address");
 	int id = bt_id_create(&addr, NULL);
 	if (id != 0) {

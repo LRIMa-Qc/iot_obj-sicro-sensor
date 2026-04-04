@@ -122,6 +122,50 @@ endmenu
 
 ################################################################################
 
+# APP_SETTINGS module
+
+menu "APP_SETTINGS module"
+
+########################################
+# APP_SETTINGS Logging
+
+choice APP_SETTINGS_LOG_LEVEL_CHOICE
+    prompt "Log level"
+    depends on LOG
+    default APP_SETTINGS_LOG_LEVEL_INF
+    help
+        Message severity threshold for logging.
+
+config APP_SETTINGS_LOG_LEVEL_OFF
+    bool "Off"
+
+config APP_SETTINGS_LOG_LEVEL_ERR
+    bool "Error"
+
+config APP_SETTINGS_LOG_LEVEL_WRN
+    bool "Warning"
+
+config APP_SETTINGS_LOG_LEVEL_INF
+    bool "Info"
+
+config APP_SETTINGS_LOG_LEVEL_DBG
+    bool "Debug"
+
+endchoice
+
+config APP_SETTINGS_LOG_LEVEL
+    int
+    depends on LOG
+    default 0 if APP_SETTINGS_LOG_LEVEL_OFF
+    default 1 if APP_SETTINGS_LOG_LEVEL_ERR
+    default 2 if APP_SETTINGS_LOG_LEVEL_WRN
+    default 3 if APP_SETTINGS_LOG_LEVEL_INF
+    default 4 if APP_SETTINGS_LOG_LEVEL_DBG
+
+endmenu
+
+################################################################################
+
 # SHT4X module
 
 menu "SHT4X module"

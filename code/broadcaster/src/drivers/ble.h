@@ -30,9 +30,6 @@
 #define GND_HUM_ID 5
 #define BAT_ID 254
 
-#define DEVICE_NAME CONFIG_BLE_USER_DEFINED_NAME
-#define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
-
 /**
  * @brief BLE state machine definition
  *
