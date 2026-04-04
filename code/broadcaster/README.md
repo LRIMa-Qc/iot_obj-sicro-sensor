@@ -17,6 +17,8 @@
 
 Before building the broadcaster program, you **must** make sure that you changed the `CONFIG_BLE_USER_DEFINED_MAC_ADDR` and the `CONFIG_BLE_USER_DEFINED_NAME` so that they are unique. Note that the `CONFIG_BLE_USER_DEFINED_NAME` must end with a number (ex : 01). If you need mac address, you can use this [mac address generator](https://dnschecker.org/mac-address-generator.php).
 
+These values are used as defaults and are now persisted in flash (settings/NVS) on first boot. If you later change them in configuration, the device will keep the persisted values unless flash settings are erased.
+
 ### Building and flashing
 
 To build the program for the nrf52833 you need to use the [NRFconnect](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-VS-Code) extension in vscode and then you just have to [follow the instructions](https://nrfconnect.github.io/vscode-nrf-connect/get_started/build_app_ncs.html#how-to-build-an-application) to build it using the `lrima_greenhouse_nrf52833/nrf52833` board target. After you need to flash it using the [option available in the extension](https://nrfconnect.github.io/vscode-nrf-connect/get_started/quick_debug.html#how-to-flash-an-application).
@@ -28,6 +30,8 @@ Note : If the board is giving out an error when flashing try these steps :
 3. Check that the J-Link is properly connected to the board (You can try to press the reset button on the board, the J-Link led should be red when the button is pressed)
 4. Try to flash the board using the `erase and flash` option
 5. Verify the soldering of the board
+
+To reset persisted settings (`sleep time`, `device name`, `device MAC`) and re-apply values from `prj.conf`, you must use **erase and flash** (a normal flash keeps existing settings in NVS).
 
 #### J-Link setup
 
@@ -62,6 +66,13 @@ CONFIG_BLE_USER_DEFINED_NAME="LRIMa 67"              # Change per device (must e
 ```
 
 **Generate unique MAC address:** Use [MAC Address Generator](https://dnschecker.org/mac-address-generator.php)
+
+Persistence behavior:
+
+- `sleep time`, `device name`, and `device MAC` are stored in flash through settings/NVS.
+- On first boot (or after erase), values from `prj.conf` are used as defaults and saved.
+- On next boots, persisted values are loaded from flash.
+- To force new defaults from `prj.conf`, perform **erase and flash**.
 
 ---
 
