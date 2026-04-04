@@ -122,10 +122,10 @@
     };
 
     shtc3: shtc3@70 {
-		compatible = "i2c-device";
-		reg = <0x70>;
-		label = "SHTC3";
-	};
+        compatible = "i2c-device";
+        reg = <0x70>;
+        label = "SHTC3";
+    };
 
     sht4x: sht4x@44 {
         compatible = "sensirion,sht4x";
