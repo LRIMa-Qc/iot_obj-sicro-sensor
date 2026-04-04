@@ -25,10 +25,16 @@ int led_init(void) {
         return -1;
     }
 
-    gpio_pin_configure_dt(&led1, GPIO_OUTPUT_ACTIVE);
+    RET_IF_ERR(gpio_pin_configure_dt(&led1, GPIO_OUTPUT_INACTIVE), "Unable to configure LED1 pin");
 
     is_init = true;
 
+    led1_off();
+    
+    k_sleep(K_MSEC(500));
+    led1_on();
+
+    k_sleep(K_MSEC(500)); 
     led1_off();
 
     LOG_INF("Led driver initialized");
@@ -46,7 +52,7 @@ int led1_set_state(bool state) {
         return -1;
     }
 
-    gpio_pin_set_dt(&led1, state);
+    RET_IF_ERR(gpio_pin_set_dt(&led1, state), "Unable to set LED1 pin state");
 
     led1_state = state;
 

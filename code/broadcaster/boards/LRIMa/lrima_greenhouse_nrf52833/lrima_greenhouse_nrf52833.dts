@@ -76,18 +76,8 @@
 	status = "okay";
 };
 
-&i2c0 {
-	compatible = "nordic,nrf-twim";
-	status = "okay";
-	pinctrl-0 = <&i2c0_default>;
-	pinctrl-1 = <&i2c0_sleep>;
-	pinctrl-names = "default", "sleep";
-
-	shtc3: shtc3@70 {
-		compatible = "i2c-device";
-		reg = <0x70>;
-		label = "SHTC3";
-	};
+&i2c0 { // LED1 is on P0.13 and i2c0 uses P0.13/P0.24, so disable i2c0 to avoid conflicts.
+    status = "disabled";
 };
 
 &pwm0 {
