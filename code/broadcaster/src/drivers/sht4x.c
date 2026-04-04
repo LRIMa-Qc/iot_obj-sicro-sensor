@@ -8,7 +8,7 @@
 
 #include "sht4x.h"
 
-LOG_MODULE_REGISTER(SHT4X, CONFIG_SHT4X_LOG_LEVEL);
+LOG_MODULE_REGISTER(APP_SHT4X, CONFIG_SHT4X_LOG_LEVEL);
 
 const struct device *const sht4x = DEVICE_DT_GET_ONE(sensirion_sht4x);
 
