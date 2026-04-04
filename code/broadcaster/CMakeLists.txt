@@ -12,9 +12,11 @@ project(broadcaster)
 # Add util source file
 SET(UTILS_H
     src/utils.h
+    src/payload.h
     )
 SET(UTILS_C
     src/utils.c
+    src/payload.c
     )
 
 # Add drivers source files

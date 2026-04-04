@@ -1,380 +1,315 @@
 /**
  * ble.c
- * 
+ *
  * BLE driver
- * 
+ *
  * Author: Nils Lahaye (2024)
- * 
-*/
+ */
+
+#include <errno.h>
+#include <string.h>
 
 #include "ble.h"
+#include "../payload.h"
 
 LOG_MODULE_REGISTER(BLE_DRIVER, CONFIG_BLE_DRIVER_LOG_LEVEL);
 
-/** Counter for the packet number (0-255)*/
-static int counter;
+static uint16_t counter;
+static bool is_initialized;
+static ble_state_t current_state = BLE_STATE_IDLE;
 
-/** Flag to check if the driver is initialized */
-static bool isInisialized = false;
+#if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
+static uint16_t *sleep_time;
+#endif
 
-/** Flag to check if the adv time is done*/
-static bool adv_time_done = true;
+static uint8_t service_data[25];
+static bt_addr_le_t addr;
+static struct bt_le_ext_adv *ext_adv;
 
-/** Function for when the timer is done*/
-void ble_adv_timer_handler(struct k_timer *timer_id) { adv_time_done = true; }
-/** Timer for the advertising duration */
+static void ble_adv_timer_handler(struct k_timer *timer_id);
 K_TIMER_DEFINE(advertising_timer, ble_adv_timer_handler, NULL);
 
 #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
+static void ble_conn_timeout_timer_handler(struct k_timer *timer_id);
+K_TIMER_DEFINE(conn_timeout_timer, ble_conn_timeout_timer_handler, NULL);
 
-    /** Flag to check if we are connected to a device */
-    static bool isConnected = false;
-
-    /** Function for when the timer is done*/
-    void ble_conn_timeout_timer_handler(struct k_timer *timer_id) { 
-        isConnected = false; 
-        LOG_WRN("Connection timed out (%ds)", CONFIG_BLE_CONN_TIMEOUT_SEC);
-    }
-    /** Timer for the advertising duration */
-    K_TIMER_DEFINE(conn_timeout_timer, ble_conn_timeout_timer_handler, NULL);
-
-    /** Pointer to the sleep time value */
-    static uint16_t *sleep_time;
-
+static void ble_conn_timeout_timer_handler(struct k_timer *timer_id)
+{
+	ARG_UNUSED(timer_id);
+	LOG_WRN("Connection timed out (%ds)", CONFIG_BLE_CONN_TIMEOUT_SEC);
+	current_state = BLE_STATE_TIMEOUT;
+}
 #endif
 
-/** Service data array for the broadcast*/
-static uint8_t service_data[25] = {0};
-
-/** MAC address object for the advertising*/
-static bt_addr_le_t addr;
-
-/** Data to advertise for the device*/
 static const struct bt_data adv_data[] = {
-    #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-        BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
-        BT_DATA_BYTES(BT_DATA_UUID16_ALL, BT_UUID_16_ENCODE(SLEEP_TIME_SERVICE_UUID)),
-    #endif
-    BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
-    BT_DATA(BT_DATA_SVC_DATA16, service_data, sizeof(service_data)),
+#if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
+	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
+	BT_DATA_BYTES(BT_DATA_UUID16_ALL, BT_UUID_16_ENCODE(SLEEP_TIME_SERVICE_UUID)),
+#endif
+	BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
+	BT_DATA(BT_DATA_SVC_DATA16, service_data, sizeof(service_data)),
 };
 
-/** Parameters for the broadcaster advertising set*/
 static const struct bt_le_adv_param adv_param = {
-        .options = 
-            (
-                  BT_LE_ADV_OPT_EXT_ADV 
-                | BT_LE_ADV_OPT_USE_IDENTITY 
-            #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-                | BT_LE_ADV_OPT_CONN
-            #endif
-            #if CONFIG_BLE_ADV_USE_CODED_PHY
-                | BT_LE_ADV_OPT_CODED
-            #endif
-            ),
-		.interval_min = ((uint16_t)(CONFIG_BLE_MIN_ADV_INTERVAL_MS) / 0.625f),
-		.interval_max = ((uint16_t)(CONFIG_BLE_MAX_ADV_INTERVAL_MS) / 0.625f),
-		.secondary_max_skip = 0U,
-		.peer = NULL,
+	.options = BT_LE_ADV_OPT_EXT_ADV | BT_LE_ADV_OPT_USE_IDENTITY
+#if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
+		| BT_LE_ADV_OPT_CONN
+#endif
+#if CONFIG_BLE_ADV_USE_CODED_PHY
+		| BT_LE_ADV_OPT_CODED
+#endif
+	,
+	.interval_min = ((uint16_t)(CONFIG_BLE_MIN_ADV_INTERVAL_MS) / 0.625f),
+	.interval_max = ((uint16_t)(CONFIG_BLE_MAX_ADV_INTERVAL_MS) / 0.625f),
+	.secondary_max_skip = 0U,
+	.peer = NULL,
 };
 
-static struct bt_le_ext_adv *ext_adv;
+static int ble_state_transition(ble_state_t new_state)
+{
+	ble_state_t old_state = current_state;
 
-/**
- * @brief quickly encode a pair of float values into the service data
- * 
- * @param pos position in the service data array
- * @param id id of the value
- * @param val value to encode
- * 
- * @return int 0 if no error, error code otherwise
-*/
-static int ble_encode_pair(uint8_t pos, uint8_t id, float *val) {
-    uint8_t whole, decimal;
+	switch (old_state) {
+	case BLE_STATE_IDLE:
+		if (new_state != BLE_STATE_IDLE && new_state != BLE_STATE_ADVERTISING) {
+			return -EINVAL;
+		}
+		break;
+	case BLE_STATE_ADVERTISING:
+		if (new_state != BLE_STATE_ADVERTISING && new_state != BLE_STATE_IDLE && new_state != BLE_STATE_CONNECTED) {
+			return -EINVAL;
+		}
+		break;
+	case BLE_STATE_CONNECTED:
+		if (new_state != BLE_STATE_CONNECTED && new_state != BLE_STATE_TIMEOUT && new_state != BLE_STATE_DISCONNECT && new_state != BLE_STATE_IDLE) {
+			return -EINVAL;
+		}
+		break;
+	case BLE_STATE_TIMEOUT:
+		if (new_state != BLE_STATE_TIMEOUT && new_state != BLE_STATE_DISCONNECT && new_state != BLE_STATE_IDLE) {
+			return -EINVAL;
+		}
+		break;
+	case BLE_STATE_DISCONNECT:
+		if (new_state != BLE_STATE_DISCONNECT && new_state != BLE_STATE_IDLE) {
+			return -EINVAL;
+		}
+		break;
+	default:
+		return -EINVAL;
+	}
 
-    LOG_IF_ERR(floatSeparator(val, &whole, &decimal), "Unable to separate float");
+	current_state = new_state;
+	return 0;
+}
 
-    /* Encode sign in decimal value*/
-    if(*val < 0) {
-        whole = whole * -1;
-        decimal += 100;
-    }
-
-    service_data[pos] = id;
-    service_data[pos + 1] = whole;
-    service_data[pos + 2] = decimal;
-
-    return 0;
+void ble_adv_timer_handler(struct k_timer *timer_id)
+{
+	ARG_UNUSED(timer_id);
+	current_state = BLE_STATE_IDLE;
 }
 
 #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
+static void connected(struct bt_conn *conn, uint8_t err)
+{
+	if (err) {
+		LOG_ERR("Connection failed (err %u)", err);
+		return;
+	}
 
-    /**
-     * @brief Handle the connection event
-     * 
-     * @param conn Pointer to the connection object
-     * @param err Error code
-    */
-    static void connected(struct bt_conn *conn, uint8_t err) {
-        if (err) {
-            LOG_ERR("Connection failed (err %u)", err);
-            return;
-        }
+	char bt_addr[BT_ADDR_LE_STR_LEN];
+	bt_addr_le_to_str(bt_conn_get_dst(conn), bt_addr, sizeof(bt_addr));
+	LOG_INF("Connected %s", bt_addr);
 
-        char addr[BT_ADDR_LE_STR_LEN];
-        bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+	current_state = BLE_STATE_CONNECTED;
+	k_timer_start(&conn_timeout_timer, K_SECONDS(CONFIG_BLE_CONN_TIMEOUT_SEC), K_NO_WAIT);
+}
 
-        LOG_INF("Connected %s",addr);
+static void disconnected(struct bt_conn *conn, uint8_t reason)
+{
+	ARG_UNUSED(conn);
+	LOG_INF("Disconnected (reason %u)", reason);
+	current_state = BLE_STATE_IDLE;
+	k_timer_stop(&conn_timeout_timer);
+}
 
-        isConnected = true;
-        k_timer_start(&conn_timeout_timer, K_SECONDS(CONFIG_BLE_CONN_TIMEOUT_SEC), K_NO_WAIT);
-    }
+BT_CONN_CB_DEFINE(conn_callbacks) = {
+	.connected = connected,
+	.disconnected = disconnected,
+};
 
-    /**
-     * @brief Handle the disconnection event
-     * 
-     * @param conn Pointer to the connection object
-     * @param reason Reason for the disconnection
-    */
-    static void disconnected(struct bt_conn *conn, uint8_t reason) {
-        LOG_INF("Disconnected (reason %u)", reason);
+static ssize_t write_sleep_time(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+				const void *buf, uint16_t len, uint16_t offset, uint8_t flags)
+{
+	ARG_UNUSED(conn);
+	ARG_UNUSED(attr);
+	ARG_UNUSED(flags);
 
-        isConnected = false;
-        
-        k_timer_stop(&conn_timeout_timer);
-        k_timer_stop(&advertising_timer);
-        adv_time_done = true;
-    }
+	if (offset != 0U) {
+		return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
+	}
 
-    /* Define the connections events callbacks*/
-    BT_CONN_CB_DEFINE(conn_callbacks) = {
-        .connected = connected,
-        .disconnected = disconnected,
-    };
+	if (len != sizeof(uint16_t)) {
+		return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
+	}
 
-    /**
-     * @brief Handle the sleep time write
-     * 
-     * @param conn Pointer to the connection object
-     * @param attr Pointer to the attribute object
-     * @param buf Pointer to the buffer
-     * @param len Length of the buffer
-     * @param offset Offset of the buffer
-     * @param flags Flags
-     * 
-     * @return ssize_t Length of the buffer
-    */
-    ssize_t write_sleep_time(struct bt_conn *conn, const struct bt_gatt_attr *attr, const void *buf, 
-                    uint16_t len, uint16_t offset, uint8_t flags) 
-    {
+	if (sleep_time == NULL) {
+		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+	}
 
-        if (offset + len > sizeof(sleep_time)) {
-            LOG_ERR("Invalid offset or len for write_sleep_time");
-            return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
-        }
+	uint16_t parsed_value;
+	memcpy(&parsed_value, buf, sizeof(parsed_value));
 
-        // Cast the buffer pointer to uint16_t pointer
-        const uint16_t *uint16_ptr = (const uint16_t *)buf;
+	if (parsed_value < 1U || parsed_value > CONFIG_SENSOR_SLEEP_DURATION_MAX_SEC) {
+		return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
+	}
 
-        // Dereference the pointer to get the uint16_t value
-        uint16_t parsed_value = *uint16_ptr;
-        
-        LOG_INF("Received new sleep time value: %d", parsed_value);
+	*sleep_time = parsed_value;
+	k_timer_start(&conn_timeout_timer, K_SECONDS(CONFIG_BLE_CONN_TIMEOUT_SEC), K_NO_WAIT);
+	return len;
+}
 
-        // Check if the value is between 1 and the maximum sleep time
-        if(parsed_value < 1) {
-            LOG_WRN("Received sleep time value is too low: %d (seting to 1)", parsed_value);
-            parsed_value = 1;
-        }
-        else if(parsed_value > CONFIG_SENSOR_SLEEP_DURATION_MAX_SEC) {
-            LOG_WRN("Received sleep time value is too high: %d (seting to %d)", parsed_value, CONFIG_SENSOR_SLEEP_DURATION_MAX_SEC);
-            parsed_value = CONFIG_SENSOR_SLEEP_DURATION_MAX_SEC;
-        }
+static ssize_t read_sleep_time(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+				 void *buf, uint16_t len, uint16_t offset)
+{
+	ARG_UNUSED(attr);
+	if (sleep_time == NULL) {
+		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+	}
 
-        // Update the sleep time value
-        if(sleep_time == NULL) {
-            LOG_ERR("Sleep time pointer is NULL");
-            return len;
-        }
+	k_timer_start(&conn_timeout_timer, K_SECONDS(CONFIG_BLE_CONN_TIMEOUT_SEC), K_NO_WAIT);
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, sleep_time, sizeof(*sleep_time));
+}
 
-        *sleep_time = parsed_value;
-
-        k_timer_start(&conn_timeout_timer, K_SECONDS(CONFIG_BLE_CONN_TIMEOUT_SEC), K_NO_WAIT);
-
-        return len;
-    }
-
-    /**
-     * @brief Handle the sleep time read
-     * 
-     * @param conn Pointer to the connection object
-     * @param attr Pointer to the attribute object
-     * @param buf Pointer to the buffer
-     * @param len Length of the buffer
-     * @param offset Offset of the buffer
-     * 
-     * @return ssize_t Length of the buffer
-    */
-    ssize_t read_sleep_time(struct bt_conn *conn, const struct bt_gatt_attr *attr, void *buf,
-                    uint16_t len, uint16_t offset) 
-    {
-        LOG_INF("Sending sleep time value: %d", *sleep_time);
-
-        k_timer_start(&conn_timeout_timer, K_SECONDS(CONFIG_BLE_CONN_TIMEOUT_SEC), K_NO_WAIT);
-
-        return bt_gatt_attr_read(conn, attr, buf, len, offset, sleep_time, sizeof(*sleep_time));
-    }
-
-    BT_GATT_SERVICE_DEFINE(sleep_time_service,
-        BT_GATT_PRIMARY_SERVICE(BT_UUID_DECLARE_16(SLEEP_TIME_SERVICE_UUID)),
-        BT_GATT_CHARACTERISTIC(BT_UUID_DECLARE_16(SLEEP_TIME_CHARACTERISTIC_UUID), BT_GATT_CHRC_WRITE | BT_GATT_CHRC_READ,
-            BT_GATT_PERM_WRITE | BT_GATT_PERM_READ, read_sleep_time, write_sleep_time, &sleep_time),
-    );
-
+BT_GATT_SERVICE_DEFINE(sleep_time_service,
+	BT_GATT_PRIMARY_SERVICE(BT_UUID_DECLARE_16(SLEEP_TIME_SERVICE_UUID)),
+	BT_GATT_CHARACTERISTIC(BT_UUID_DECLARE_16(SLEEP_TIME_CHARACTERISTIC_UUID),
+		BT_GATT_CHRC_WRITE | BT_GATT_CHRC_READ,
+		BT_GATT_PERM_WRITE | BT_GATT_PERM_READ,
+		read_sleep_time, write_sleep_time, &sleep_time),
+);
 #endif
 
-/**
- * @brief Start the advertising
-*/
-static void ble_start_adv(int err) {
-    if (err) {
-        LOG_ERR("Bluetooth failed to enable (err %d)", err);
-        return;
-    }
+static void ble_start_adv(int err)
+{
+	if (err) {
+		LOG_ERR("Bluetooth failed to enable (err %d)", err);
+		current_state = BLE_STATE_IDLE;
+		return;
+	}
 
-    /* Start advertising */
-    LOG_INF("Starting advertising");
+	LOG_INF("Starting advertising");
+	LOG_IF_ERR(bt_set_name(DEVICE_NAME), "Unable to set broadcaster device name");
 
-    LOG_IF_ERR(bt_set_name(DEVICE_NAME), "Unable to set broadcaster device name");
+	LOG_IF_ERR(bt_le_ext_adv_create(&adv_param, NULL, &ext_adv), "Advertising failed to create");
 
-    LOG_IF_ERR(bt_le_ext_adv_create(&adv_param, NULL, &ext_adv), "Advertising failed to create");
+	service_data[0] = BROADCAST_SERVICE_UUID_1;
+	service_data[1] = BROADCAST_SERVICE_UUID_2;
+	service_data[2] = (uint8_t)(counter & 0xFFU);
+	service_data[3] = (uint8_t)((counter >> 8) & 0xFFU);
 
-    LOG_IF_ERR(bt_le_ext_adv_set_data(ext_adv, adv_data, ARRAY_SIZE(adv_data), NULL, 0), "Advertising failed to set data");
+	LOG_IF_ERR(bt_le_ext_adv_set_data(ext_adv, adv_data, ARRAY_SIZE(adv_data), NULL, 0),
+		   "Advertising failed to set data");
 
-    counter++; // Increment the advertising counter
+	counter++;
+	current_state = BLE_STATE_ADVERTISING;
+	k_timer_start(&advertising_timer, K_SECONDS(CONFIG_BLE_ADV_DURATION_SEC), K_NO_WAIT);
 
-    LOG_IF_ERR(bt_le_ext_adv_start(ext_adv, BT_LE_EXT_ADV_START_DEFAULT), "Advertising faild to start");
-
-    LOG_INF("Advertising started");
+	LOG_IF_ERR(bt_le_ext_adv_start(ext_adv, BT_LE_EXT_ADV_START_DEFAULT), "Advertising failed to start");
+	LOG_INF("Advertising started");
 }
 
-int ble_init(uint16_t *sleep_time_ptr) {
+int ble_init(uint16_t *sleep_time_ptr)
+{
+	if (is_initialized) {
+		LOG_WRN("BLE already initialized");
+		return 0;
+	}
 
-    if(isInisialized) {
-        LOG_WRN("BLE already initialized");
-        return 0;
-    }
+	k_timer_init(&advertising_timer, ble_adv_timer_handler, NULL);
+#if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
+	k_timer_init(&conn_timeout_timer, ble_conn_timeout_timer_handler, NULL);
+	if (sleep_time_ptr == NULL) {
+		LOG_ERR("Sleep time pointer is NULL");
+		return -EINVAL;
+	}
+	sleep_time = sleep_time_ptr;
+#endif
 
-    k_timer_init(&advertising_timer, ble_adv_timer_handler, NULL);
-    #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-        k_timer_init(&conn_timeout_timer, ble_conn_timeout_timer_handler, NULL);
+	RET_IF_ERR(bt_addr_le_from_str(CONFIG_BLE_USER_DEFINED_MAC_ADDR, "random", &addr),
+		   "Unable to convert MAC address");
+	int id = bt_id_create(&addr, NULL);
+	if (id != 0) {
+		LOG_ERR("Unable to set MAC address");
+		return id;
+	}
 
-    /* Setting sleep time pointer */// The sleep time pointer is only needed if the sleep modification is enabled
-        if(sleep_time_ptr == NULL) {
-            LOG_ERR("Sleep time pointer is NULL");
-            return -1;
-        }
-
-        sleep_time = sleep_time_ptr;
-    #endif
-
-    LOG_INF("Initializing bluetooth");
-
-    LOG_INF("Setting MAC address");
-    RET_IF_ERR(bt_addr_le_from_str(CONFIG_BLE_USER_DEFINED_MAC_ADDR, "random", &addr), "Unable to convert MAC address");
-    int id = bt_id_create(&addr, NULL);
-    if (id != 0) {
-        LOG_ERR("Unable to set MAC address");
-        return id;
-    }
-
-    /* Setting service UUID */
-    service_data[0] = BROADCAST_SERVICE_UUID_1;
-    service_data[1] = BROADCAST_SERVICE_UUID_2;
-
-    isInisialized = true;
-    LOG_INF("Bluetooth initialized");
-
-    return 0;
+	is_initialized = true;
+	LOG_INF("Bluetooth initialized");
+	return 0;
 }
 
-int ble_stop_adv(void) {
-    if (!isInisialized) {
-        LOG_ERR("BLE not initialized");
-        return -1;
-    }
+int ble_stop_adv(void)
+{
+	if (!is_initialized) {
+		return -EINVAL;
+	}
 
-    LOG_INF("Stopping advertising");
+	if (ext_adv != NULL) {
+		LOG_IF_ERR(bt_le_ext_adv_stop(ext_adv), "Unable to stop advertising set");
+	}
 
-    LOG_IF_ERR(bt_le_ext_adv_stop(ext_adv), "Unable to stop advertising set");
-
-    LOG_INF("Advertising stopped");
-
-    return 0;
+	return 0;
 }
 
-int ble_encode_adv_data(sensors_data_t *sensors_data) {
+int ble_encode_adv_data(sensors_data_t *sensors_data)
+{
+	if (sensors_data == NULL) {
+		return -EINVAL;
+	}
 
-    LOG_DBG("Encoding data");
+	service_data[0] = BROADCAST_SERVICE_UUID_1;
+	service_data[1] = BROADCAST_SERVICE_UUID_2;
+	service_data[2] = (uint8_t)(counter & 0xFFU);
+	service_data[3] = (uint8_t)((counter >> 8) & 0xFFU);
 
-    /* Setting counter */
-    service_data[2] = 0;
-    service_data[3] = counter;
-
-    /* Setting data */
-    LOG_IF_ERR(ble_encode_pair(4, TEMP_ID, &sensors_data->temp), "Unable to encode temperature");
-    LOG_IF_ERR(ble_encode_pair(7, HUM_ID, &sensors_data->hum), "Unable to encode humidity");
-    /* CO2 is encoded as ppm/10 so it fits the existing 1-byte whole + 1-byte decimal format. */
-    float co2_div10 = sensors_data->co2 / 10.0f;
-    LOG_IF_ERR(ble_encode_pair(10, CO2_ID, &co2_div10), "Unable to encode co2");
-    LOG_IF_ERR(ble_encode_pair(13, LUM_ID, &sensors_data->lum), "Unable to encode luminosity");
-    LOG_IF_ERR(ble_encode_pair(16, GND_TEMP_ID, &sensors_data->gnd_temp), "Unable to encode ground temperature");
-    LOG_IF_ERR(ble_encode_pair(19, GND_HUM_ID, &sensors_data->gnd_hum), "Unable to encode ground humidity");
-    LOG_IF_ERR(ble_encode_pair(22, BAT_ID, &sensors_data->bat), "Unable to encode battery");
-
-    LOG_DBG("Data encoded");
-
-    return 0;
+	return payload_encode(sensors_data, service_data, sizeof(service_data));
 }
 
-int ble_adv(void) {
-    if (!isInisialized) {
-        LOG_ERR("BLE not initialized");
-        return -1;
-    }
+int ble_adv(void)
+{
+	if (!is_initialized) {
+		return -EINVAL;
+	}
 
-    /* Enable bluetooth */
-    LOG_INF("Enabling bluetooth");
-    LOG_IF_ERR(bt_enable(ble_start_adv), "Unable to enable bluetooth");
+	LOG_IF_ERR(bt_enable(ble_start_adv), "Unable to enable bluetooth");
 
-    // Start the advertising timer
-    adv_time_done = false;
-    k_timer_start(&advertising_timer, K_SECONDS(CONFIG_BLE_ADV_DURATION_SEC), K_NO_WAIT);
+	while (current_state == BLE_STATE_ADVERTISING) {
+		k_sleep(K_MSEC(10));
+	}
 
-    while (!adv_time_done) {
-            k_sleep(K_MSEC(10));  // Sleep for a short duration while waiting
-    }
+#if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
+	while (current_state == BLE_STATE_CONNECTED || current_state == BLE_STATE_TIMEOUT) {
+		k_sleep(K_MSEC(10));
+	}
+#endif
 
-    LOG_INF("Advertising time done");
+	LOG_IF_ERR(ble_stop_adv(), "Unable to stop advertising");
+	LOG_IF_ERR(bt_disable(), "Unable to disable bluetooth");
+	k_timer_stop(&advertising_timer);
+#if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
+	k_timer_stop(&conn_timeout_timer);
+#endif
+	led1_off();
+	return 0;
+}
 
-    #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-        if(isConnected) LOG_INF("Waiting for disconnection");
-        while(isConnected) {
-            k_sleep(K_MSEC(10));
-        }
-    #endif
+int ble_transition_to_state(ble_state_t new_state)
+{
+	return ble_state_transition(new_state);
+}
 
-    LOG_IF_ERR(ble_stop_adv(), "Unable to stop advertising");
-    LOG_INF("Disabling bluetooth");
-    LOG_IF_ERR(bt_disable(), "Unable to disable bluetooth");
-
-    k_timer_stop(&advertising_timer);
-    adv_time_done = true;
-    #if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-        k_timer_stop(&conn_timeout_timer);
-    #endif
-
-    led1_off();
-
-    return 0;
+ble_state_t ble_get_state(void)
+{
+	return current_state;
 }

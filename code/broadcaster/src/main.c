@@ -43,7 +43,6 @@ bool first_run = true;
 /* Sleep time bettwen iterations*/
 static uint16_t sleep_time = CONFIG_SENSOR_SLEEP_DURATION_SEC;
 static uint16_t persisted_sleep_time = CONFIG_SENSOR_SLEEP_DURATION_SEC;
-static uint16_t sleep_time_spent = 0;
 static uint64_t initial_timestamp = 0;
 
 //Pointer to the current i2c temperature and humidity sensor
@@ -118,6 +117,12 @@ static int save_sleep_time_settings(void) {
 
 	persisted_sleep_time = sleep_time;
 	LOG_INF("Persisted sleep_time: %u", sleep_time);
+	/* Verify that the persisted value matches in-memory value */
+	if (persisted_sleep_time != sleep_time) {
+		LOG_WRN("Persistence verification failed: persisted=%u, in-memory=%u",
+			persisted_sleep_time, sleep_time);
+		return -EIO;
+	}
 
 	return 0;
 }
@@ -265,14 +270,11 @@ int main(void) {
 
 		LOG_IF_ERR(save_sleep_time_settings(), "Unable to persist sleep time");
 
-		// Wait
-		sleep_time_spent = 0;
-		LOG_INF("Sleeping for %d seconds", sleep_time);
-		while(sleep_time_spent < sleep_time && !get_button1_state()) {
-			k_sleep(K_SECONDS(1));
-			sleep_time_spent++;
+		LOG_INF("Sleeping for %u seconds", sleep_time);
+		int sem_result = k_sem_take(button_get_pressed_sem(), K_SECONDS(sleep_time));
+		if (sem_result == 0) {
+			LOG_INF("Button pressed, waking up");
 		}
-		if(get_button1_state()) LOG_INF("Button pressed, waking up");
 	}
 
 	return 0;

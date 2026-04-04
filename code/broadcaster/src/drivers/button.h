@@ -38,4 +38,16 @@ int button1_read(void);
 */
 int get_button1_state(void);
 
+/**
+ * @brief Get the button pressed semaphore for event-driven wakeup
+ *
+ * Used by main loop to wait for button press with timeout:
+ *   k_sem_take(&button_get_pressed_sem(), K_SECONDS(timeout_sec))
+ *
+ * The semaphore is given (incremented) by the button ISR on press.
+ * 
+ * @return struct k_sem* Pointer to the button pressed semaphore
+*/
+struct k_sem* button_get_pressed_sem(void);
+
 #endif // BUTTON_H

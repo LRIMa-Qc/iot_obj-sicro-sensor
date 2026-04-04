@@ -11,15 +11,19 @@
 LOG_MODULE_REGISTER(BUTTON, CONFIG_BUTTON_LOG_LEVEL);
 
 static const struct gpio_dt_spec button1 = GPIO_DT_SPEC_GET(DT_ALIAS(button1), gpios);
+static bool is_init;
+static int button1_state;
 
-static bool is_init = false;
+K_SEM_DEFINE(button_pressed_sem, 0, 1);
 
-static int button1_state = 0;
+void button1_cb(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
+{
+    ARG_UNUSED(dev);
+    ARG_UNUSED(cb);
+    ARG_UNUSED(pins);
 
-
-void button1_cb(const struct device *dev, struct gpio_callback *cb, uint32_t pins) {
     button1_read();
-
+    k_sem_give(&button_pressed_sem);
     LOG_INF("Button1 state changed to %d", button1_state);
 }
 
@@ -66,3 +70,8 @@ int button1_read(void) {
 }
 
 int get_button1_state(void) { return button1_state; }
+
+struct k_sem *button_get_pressed_sem(void)
+{
+    return &button_pressed_sem;
+}

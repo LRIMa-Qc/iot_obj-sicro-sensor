@@ -48,6 +48,23 @@ The board supports over-the-air updates (OTA) over BLE/MCUmgr.
 
 After a successful transfer, the board reboots into the new image.
 
+---
+
+## Unique Device Configuration
+
+Before deploying multiple units, ensure each device has a **unique MAC address** and **descriptive name**:
+
+Edit **prj.conf**:
+
+```
+CONFIG_BLE_USER_DEFINED_MAC_ADDR="f0:ca:f0:ca:01:e8"  # Change per device
+CONFIG_BLE_USER_DEFINED_NAME="LRIMa 67"              # Change per device (must end with number)
+```
+
+**Generate unique MAC address:** Use [MAC Address Generator](https://dnschecker.org/mac-address-generator.php)
+
+---
+
 Notes : If the led is turing off before you can start the flashing process, you can keep the button pressed and the sensor will keep advertising util you release the button.
 
 For MCUboot image versioning, this project uses the root `VERSION` file instead of `CONFIG_MCUBOOT_IMAGE_VERSION`.
