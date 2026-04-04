@@ -14,9 +14,13 @@ static const struct i2c_dt_spec stcc4_spec = I2C_DT_SPEC_GET(DT_NODELABEL(stcc4)
 static const enum stcc4_mode stcc4_mode = DT_PROP(DT_NODELABEL(stcc4), measurement_mode);
 
 static bool isInitialized = false;
+static bool has_sample = false;
 static int16_t co2_sample;
 static uint16_t temp_sample;
 static uint16_t humi_sample;
+static int64_t last_sample_ts_ms;
+
+#define STCC4_SAMPLE_CACHE_WINDOW_MS 250
 
 static const struct stcc4_cmd stcc4_cmds[] = {
     [STCC4_CMD_START_CONTINUOUS] = {0x218BU, 0U},
@@ -127,6 +131,8 @@ static int stcc4_fetch_sample(void)
     co2_sample = (int16_t)sys_get_be16(rx_buf);
     temp_sample = sys_get_be16(&rx_buf[3]);
     humi_sample = sys_get_be16(&rx_buf[6]);
+    has_sample = true;
+    last_sample_ts_ms = k_uptime_get();
 
     return 0;
 }
@@ -166,6 +172,8 @@ int stcc4_init(void)
         RET_IF_ERR(stcc4_write_command(STCC4_CMD_START_CONTINUOUS), "Failed to start continuous measurement");
     }
 
+    has_sample = false;
+    last_sample_ts_ms = 0;
     isInitialized = true;
     LOG_INF("Init done");
 
@@ -217,10 +225,17 @@ int stcc4_read_co2(float *co2)
         return 1;
     }
 
-    ret = stcc4_fetch_sample();
-    if (ret < 0)
+    /*
+     * stcc4_read() already fetches all channels (including CO2). Reuse a
+     * very recent sample to avoid back-to-back I2C command writes.
+     */
+    if (!has_sample || (k_uptime_get() - last_sample_ts_ms) > STCC4_SAMPLE_CACHE_WINDOW_MS)
     {
-        return ret;
+        ret = stcc4_fetch_sample();
+        if (ret < 0)
+        {
+            return ret;
+        }
     }
 
     *co2 = (float)co2_sample;

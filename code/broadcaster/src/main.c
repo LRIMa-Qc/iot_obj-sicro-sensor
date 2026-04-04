@@ -108,8 +108,11 @@ static int load_sleep_time_settings(void) {
 
 static int save_sleep_time_settings(void) {
 	if (sleep_time == persisted_sleep_time) {
+		LOG_DBG("Sleep time unchanged, skipping persistence (%u sec)", sleep_time);
 		return 0;
 	}
+
+	LOG_INF("Sleep time changed in RAM: %u -> %u sec", persisted_sleep_time, sleep_time);
 
 	sleep_time = clamp_sleep_time_value(sleep_time);
 	RET_IF_ERR(settings_save_one("app/sleep_time", &sleep_time, sizeof(sleep_time)),
