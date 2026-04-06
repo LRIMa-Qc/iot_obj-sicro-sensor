@@ -51,7 +51,7 @@ class AliotSyncManager:
                 device.index,
                 device.id,
                 sensors_values,
-                getattr(device, "sleep", None),
+                getattr(device, "sleep_duration_sec", None),
             )
             self.sensor_iot.update_doc(doc_json)
 
