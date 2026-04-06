@@ -6,9 +6,10 @@ import subprocess
 import os
 import sys
 from collections import OrderedDict
-from bleak import BleakClient, BleakScanner
-from bleak.exc import BleakError, BleakGATTProtocolError
+from bleak import BleakScanner
+from bleak.exc import BleakError
 from device import Device
+from core.downlink_advertiser import BluezDownlinkAdvertiser
 
 # --- Constants ---
 DEFAULT_SLEEP_TIME = 0.005
@@ -19,16 +20,12 @@ WRITE_TRACK_TTL_SECONDS = 60 * 60
 LAST_RECEIVED_TIME_WRITE_INTERVAL_SECONDS = 5
 SCAN_DURATION_SECONDS = 5
 WRITE_DELAY_SECONDS = 0.1
-BLEAK_CLIENT_TIMEOUT = 5
 CHARACTERISTIC_VALUE_MIN = 1
-CHARACTERISTIC_VALUE_MAX = 65535  # uint16 max value
+CHARACTERISTIC_VALUE_MAX = 0xFFFFFFFF  # uint32 max value
 COOLDOWN_MIN_SECONDS = 10
 LAST_RECEIVED_TIME_FILE = "./last_received_time.txt"
 INVALID_BLUETOOTH_ADDRESS = "00:00:00:00:00:00"
 LRIMA_NAME_PREFIX = "LRIMa"
-LRIMA_CONN_SUBSTRING = "LRIMa conn"
-SERVICE_UUID_SUBSTRING = "afbe"
-CHAR_UUID_SUBSTRING = "faeb"
 # ------------------
 
 
@@ -44,6 +41,7 @@ class BleakScanning:
         self.discovered_devices = OrderedDict()
         self.last_write_time = {}
         self._pending_write_tasks = set()
+        self._loop = None
         self._last_received_time_write = 0.0
         self.new_sleep_value = None
         self.scanning = False
@@ -59,6 +57,7 @@ class BleakScanning:
         self.write_lock = asyncio.Lock()
         self.write_queue = asyncio.Queue(maxsize=WRITE_QUEUE_MAX_SIZE)
         self.scan_lock = asyncio.Lock()
+        self.downlink_advertiser = BluezDownlinkAdvertiser(scan_adapter=self.__adapter)
 
     def __input_buffer_parser(self) -> None:
         while True:
@@ -84,6 +83,7 @@ class BleakScanning:
             if not existing or device.id != existing.id:
                 self.__devices[device.addr] = device
                 self.__send_data_cb(device)
+                self.handle_change_sleep(device)
 
             sleep(self.__sleep_time)
 
@@ -197,60 +197,40 @@ class BleakScanning:
             return
 
         while not self.write_queue.empty():
-            device, value = await self.write_queue.get()
-            await self._write_characteristic(device, value)
+            device, value, node_id = await self.write_queue.get()
+            await self._write_characteristic(device, value, node_id)
             await asyncio.sleep(WRITE_DELAY_SECONDS)  # Small delay to avoid overwhelming the device
 
-    async def _write_characteristic(self, device, value):
+    async def _write_characteristic(self, device, value, node_id):
         async with self.write_lock:
-            bleak_device = self.discovered_devices.get(device.address)
-            if not bleak_device:
-                print(f"[Cache Miss] Device not found: {device.name} [{device.address}]")
-                self.write_queue.task_done()
-                return
-
             if not (CHARACTERISTIC_VALUE_MIN <= value <= CHARACTERISTIC_VALUE_MAX):
                 print(f"[Invalid Value] {device.name} [{device.address}]: {value}")
                 self.write_queue.task_done()
                 return
 
-            try:
-                async with BleakClient(bleak_device, timeout=BLEAK_CLIENT_TIMEOUT) as client:
-                    for service in client.services:
-                        if SERVICE_UUID_SUBSTRING not in service.uuid:
-                            continue
+            if node_id < 0:
+                print(f"[Downlink Skipped] Invalid node id for {device.name} [{device.address}]")
+                self.write_queue.task_done()
+                return
 
-                        for char in service.characteristics:
-                            if CHAR_UUID_SUBSTRING not in char.uuid:
-                                continue
+            success = await self.downlink_advertiser.emit_sleep_update(node_id, value)
+            if success:
+                print(
+                    f"[Downlink Advertisement Sent] {device.name} [{device.address}] "
+                    f"node={node_id} sleep={value}s"
+                )
+            else:
+                print(
+                    f"[Downlink Advertisement Failed] {device.name} [{device.address}] "
+                    f"node={node_id} sleep={value}s"
+                )
 
-                            current_value_in_device = int.from_bytes(
-                                await client.read_gatt_char(char.uuid), byteorder="little"
-                            )
+            self.write_queue.task_done()
 
-                            if current_value_in_device == value:
-                                print(f"[Unchanged sleep] {device.name} [{device.address}]: {current_value_in_device}")
-                                break
-
-                            await client.write_gatt_char(char.uuid, value.to_bytes(2, "little"), response=True)
-                            print(
-                                f"[Updated sleep] {device.name} [{device.address}]: {current_value_in_device} → {value}"
-                            )
-                        break
-            except asyncio.TimeoutError:
-                print(f"[Connection Timeout] {device.name} [{device.address}]")
-            except EOFError:
-                print(f"[Connection Close Error] {device.name} [{device.address}]")
-            except BleakGATTProtocolError as e:
-                # GATT protocol errors in Bleak 3.0+ are wrapped in BleakGATTProtocolError
-                print(f"[GATT Protocol Error] {device.name} [{device.address}]: Code {e.code} - {e!r}")
-            except (BleakError, ValueError) as e:
-                print(f"[Write Failed] {device.name} [{device.address}]: {e!r}")
-
-    async def write_characteristics(self, device, value):
+    async def write_characteristics(self, device, value, node_id):
 
         # Prevent multiple writes queued for the same device
-        already_queued = any(d.address == device.address for d, _ in self.write_queue._queue)
+        already_queued = any(d.address == device.address for d, _, _ in self.write_queue._queue)
         if already_queued:
             print(f"[Write Already Queued] {device.name} [{device.address}]")
             return
@@ -259,20 +239,35 @@ class BleakScanning:
             print(f"[Write Queue Full] Skipping write for {device.name} [{device.address}]")
             return
 
-        await self.write_queue.put((device, value))
+        await self.write_queue.put((device, value, node_id))
 
     def _track_write_task(self, coro):
-        task = asyncio.create_task(coro)
-        self._pending_write_tasks.add(task)
+        if self._loop is None:
+            # Avoid leaking an un-awaited coroutine when startup ordering is unexpected.
+            coro.close()
+            print("[Write Task Skipped] Scanner event loop is not ready")
+            return
 
-        def _finalize(done_task):
-            self._pending_write_tasks.discard(done_task)
+        try:
+            running_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            running_loop = None
+
+        if running_loop is self._loop:
+            task_or_future = self._loop.create_task(coro)
+        else:
+            task_or_future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+
+        self._pending_write_tasks.add(task_or_future)
+
+        def _finalize(done_obj):
+            self._pending_write_tasks.discard(done_obj)
             try:
-                done_task.result()
+                done_obj.result()
             except Exception as exc:
                 print(f"[Write Task Error] {exc!r}")
 
-        task.add_done_callback(_finalize)
+        task_or_future.add_done_callback(_finalize)
 
     def _update_discovered_device_cache(self, device):
         address = device.address
@@ -331,32 +326,47 @@ class BleakScanning:
                 except Full:
                     pass
 
-        self.handle_change_sleep(device)
         self._write_last_received_timestamp(time())
 
-    def handle_change_sleep(self, device):
+    def handle_change_sleep(self, parsed_device):
         if self.new_sleep_value is None:
+            return
+
+        if parsed_device is None:
+            return
+
+        ble_device = self.discovered_devices.get(parsed_device.addr)
+        if ble_device is None:
+            return
+
+        target_value = int(self.new_sleep_value)
+        target_value = max(CHARACTERISTIC_VALUE_MIN, min(target_value, CHARACTERISTIC_VALUE_MAX))
+
+        if parsed_device.sleep_duration_sec == target_value:
             return
 
         now = time()
         cooldown = max(COOLDOWN_MIN_SECONDS, self.__sleep_time / 2)
-        last = self.last_write_time.get(device.address, 0)
+        last = self.last_write_time.get(ble_device.address, 0)
 
         if now - last < cooldown:
             print(
-                f"[Write Skipped] Cooldown active for {device.name} "
-                f"[{device.address}] ({now - last:.1f}s since last attempt)"
+                f"[Write Skipped] Cooldown active for {ble_device.name} "
+                f"[{ble_device.address}] ({now - last:.1f}s since last attempt)"
             )
             return
 
         self._prune_write_tracking(now)
-        self.last_write_time[device.address] = now
+        self.last_write_time[ble_device.address] = now
 
-        self._track_write_task(self.write_characteristics(device, self.new_sleep_value))
+        self._track_write_task(
+            self.write_characteristics(ble_device, target_value, parsed_device.node_id)
+        )
 
     def start_scanning(self):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+        self._loop = loop
         try:
             loop.run_until_complete(self.__read())
         finally:
@@ -366,3 +376,4 @@ class BleakScanning:
             if pending:
                 loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
             loop.close()
+            self._loop = None

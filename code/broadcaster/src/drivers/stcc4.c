@@ -339,3 +339,16 @@ int stcc4_read_co2(float *co2)
 
     return 0;
 }
+
+int stcc4_read_all(float *temperature, float *humidity, float *co2)
+{
+    int ret;
+
+    ret = stcc4_read(temperature, humidity);
+    if (ret < 0)
+    {
+        return ret;
+    }
+
+    return stcc4_read_co2(co2);
+}

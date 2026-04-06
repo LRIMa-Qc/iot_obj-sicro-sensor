@@ -11,8 +11,6 @@
 #define BLE_H_
 
 #include <zephyr/bluetooth/bluetooth.h>
-#include <zephyr/bluetooth/conn.h>
-#include <zephyr/bluetooth/gatt.h>
 #include <zephyr/bluetooth/hci.h>
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/kernel.h>
@@ -30,34 +28,23 @@
 #define GND_HUM_ID 5
 #define BAT_ID 254
 
+#define BLE_NAME = CONFIG_BLE_USER_DEFINED_NAME + " " + CONFIG_BLE_NODE_ID
+
 /**
  * @brief BLE state machine definition
  *
  * State transitions:
  *   IDLE → ADVERTISING (on ble_adv() call)
- *   ADVERTISING → IDLE (on adv timer or disconnect)
- *   ADVERTISING → CONNECTED (on connection)
- *   CONNECTED → DISCONNECT (on timeout or user disconnect)
- *   DISCONNECT → IDLE (automatically, awaited by ble_adv())
- *   TIMEOUT → DISCONNECT (automatically, on inactivity timeout)
+ *   ADVERTISING → IDLE (on adv timer or stop)
  */
 typedef enum {
-	BLE_STATE_IDLE = 0,           /**< No advertising, not connected */
-	BLE_STATE_ADVERTISING = 1,    /**< Advertising active */
-	BLE_STATE_CONNECTED = 2,      /**< Device connected */
-	BLE_STATE_TIMEOUT = 3,        /**< Connection timed out, awaiting disconnect */
-	BLE_STATE_DISCONNECT = 4      /**< Disconnect in progress */
+  BLE_STATE_IDLE = 0,        /**< No advertising, not connected */
+  BLE_STATE_ADVERTISING = 1, /**< Advertising active */
+  BLE_STATE_SCANNING = 2     /**< Active scan window for downlink */
 } ble_state_t;
 
 #define BROADCAST_SERVICE_UUID_1 0xab
 #define BROADCAST_SERVICE_UUID_2 0xcd
-
-#if CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED
-
-#define SLEEP_TIME_SERVICE_UUID 0xAFBE
-#define SLEEP_TIME_CHARACTERISTIC_UUID 0xFAEB
-
-#endif
 
 /**
  * @brief Initialize the BLE driver
@@ -74,7 +61,8 @@ int ble_init(uint16_t *sleep_time_ptr);
  *
  * @return int 0 if no error, error code otherwise
  */
-int ble_encode_adv_data(sensors_data_t *sensors_data);
+int ble_encode_adv_data(sensors_data_t *sensors_data, uint8_t present_mask,
+                        uint32_t sleep_duration_sec);
 
 /**
  * @brief Start the advertising(s) process
@@ -107,5 +95,13 @@ int ble_transition_to_state(ble_state_t new_state);
  * @return ble_state_t Current state of the BLE state machine
  */
 ble_state_t ble_get_state(void);
+
+/**
+ * @brief Fetch pending sleep update from BLE downlink path.
+ *
+ * @param sleep_time_sec_out Output pointer receiving the pending sleep value
+ * @return true when a new value was available and copied, false otherwise
+ */
+bool ble_take_pending_sleep_update(uint16_t *sleep_time_sec_out);
 
 #endif /* BLE_H_ */

@@ -24,9 +24,17 @@ class AliotSyncManager:
             return
 
         if data is not None and "/doc/sleep_time" in data:
-            scanner.new_sleep_value = data["/doc/sleep_time"]
+            raw_value = data["/doc/sleep_time"]
         else:
-            scanner.new_sleep_value = self.sensor_iot.get_doc("/doc/sleep_time") or DEFAULT_SLEEP_TIME
+            raw_value = self.sensor_iot.get_doc("/doc/sleep_time") or DEFAULT_SLEEP_TIME
+
+        try:
+            value = int(raw_value)
+        except (TypeError, ValueError):
+            value = DEFAULT_SLEEP_TIME
+
+        value = max(1, min(value, 0xFFFFFFFF))
+        scanner.new_sleep_value = value
 
         print(f"New sleep time: {scanner.new_sleep_value}")
 
@@ -39,7 +47,12 @@ class AliotSyncManager:
 
     def sync_device(self, device: Any, sensors_values: Mapping[int, float]) -> None:
         if self.sensor_iot.connected_to_alivecode:
-            doc_json = self.decoder.build_doc_payload(device.index, device.id, sensors_values)
+            doc_json = self.decoder.build_doc_payload(
+                device.index,
+                device.id,
+                sensors_values,
+                getattr(device, "sleep", None),
+            )
             self.sensor_iot.update_doc(doc_json)
 
             if self.csv_buffer.clear_after_reconnect():

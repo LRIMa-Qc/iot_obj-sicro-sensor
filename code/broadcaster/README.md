@@ -56,13 +56,14 @@ After a successful transfer, the board reboots into the new image.
 
 ## Unique Device Configuration
 
-Before deploying multiple units, ensure each device has a **unique MAC address** and **descriptive name**:
+Before deploying multiple units, ensure each device has a **unique MAC address**, **descriptive name**, and **node ID**:
 
 Edit **prj.conf**:
 
 ```
 CONFIG_BLE_USER_DEFINED_MAC_ADDR="f0:ca:f0:ca:01:e8"  # Change per device
 CONFIG_BLE_USER_DEFINED_NAME="LRIMa 67"              # Change per device (must end with number)
+CONFIG_BLE_NODE_ID=67                                  # Change per device
 ```
 
 **Generate unique MAC address:** Use [MAC Address Generator](https://dnschecker.org/mac-address-generator.php)
@@ -84,41 +85,64 @@ For MCUboot image versioning, this project uses the root `VERSION` file instead 
 
 ## Device Functionality
 
-The device is split in two parts, the broadcaster and the connectable. The broadcaster is the part that will send the data to the central. The connectable is the part that will be used to update the firmware over the air and to change the sleep time of the device. The two parts are combined in one Bluetooth device.
+The device uses a single BLE advertiser. It broadcasts sensor data to the central and does not accept BLE connections or pairing in normal operation.
 
 The user can wake up the device at any time by pressing the button1.
 
 ### Broadcaster
 
-The broadcaster will send the data at the interval specified in `CONFIG_SENSOR_SLEEP_DURATION_SEC` or at the interval set by the user using the connectable part. The broadcaster will send a beacon using the BLE extended advertising protocol (`BLE 5.0`) for the duration specified in `CONFIG_BLE_ADV_DURATION_SEC`. The beacon will contain the following information:
+The broadcaster sends data at the interval specified in `CONFIG_SENSOR_SLEEP_DURATION_SEC`. It uses legacy BLE advertising, not extended advertising, for the duration specified in `CONFIG_BLE_ADV_DURATION_SEC`. The service data is carried in the advertisement payload and the device name is placed in scan response data to keep the advertisement within the legacy 31-byte limit. The current sleep duration is included in the service payload so the central can publish it and decide whether a downlink update is actually needed.
 ![Broadcaster data.](/doc/img/broadcaster-data.png)
 
 #### Broadcast payload (service data)
 
-The broadcast service data is now 25 bytes long and is encoded as follows:
+The broadcast service data is 29 bytes long and is encoded as follows:
 
-| Byte(s) | Description                                       |
-| ------- | ------------------------------------------------- |
-| 0-1     | Broadcast service UUID bytes (`0xAB`, `0xCD`)     |
-| 2       | Reserved (currently `0`)                          |
-| 3       | Packet counter                                    |
-| 4-6     | Temperature: id=`1`, whole, decimal               |
-| 7-9     | Humidity: id=`2`, whole, decimal                  |
-| 10-12   | CO2: id=`6`, whole, decimal (value is `ppm / 10`) |
-| 13-15   | Luminosity: id=`3`, whole, decimal                |
-| 16-18   | Ground temperature: id=`4`, whole, decimal        |
-| 19-21   | Ground humidity: id=`5`, whole, decimal           |
-| 22-24   | Battery: id=`254`, whole, decimal                 |
+| Offset | Len | Field              | Type     | Notes                              |
+| ------ | --- | ------------------ | -------- | ---------------------------------- |
+| 0      | 2   | Company ID         | uint16   | `0x0059`, little-endian            |
+| 2      | 2   | Node ID            | uint16   | Unique per flashed device          |
+| 4      | 1   | Sequence counter   | uint8    | Increments each wake; wraps at 255 |
+| 5      | 4   | Sleep Duration     | uint32   | Current node sleep time in seconds |
+| 9      | 2   | Air Temperature    | int16    | `0.01 °C`                          |
+| 11     | 2   | Air Humidity       | uint16   | `0.01 %RH`                         |
+| 13     | 4   | Luminosity         | uint32   | Lux                                |
+| 17     | 2   | CO2                | uint16   | PPM                                |
+| 19     | 2   | Ground Temperature | int16    | `0.01 °C`                          |
+| 21     | 2   | Ground Humidity    | uint16   | `0.01 %RH`                         |
+| 23     | 2   | Battery Level      | uint16   | `0.01 V`                           |
+| 25     | 1   | Presence bitmap    | uint8    | Bitmask for optional sensors       |
+| 26     | 3   | Reserved           | uint8[3] | Set to `0x00`                      |
+
+Presence bitmap bits:
+
+- Bit 0: Air temperature
+- Bit 1: Air humidity
+- Bit 2: Luminosity
+- Bit 3: CO2
+- Bit 4: Ground temperature
+- Bit 5: Ground humidity
+- Bit 6: Battery
 
 Notes:
 
-- Each measurement uses 3 bytes: `id`, `whole`, `decimal`.
-- For negative values, sign is stored in the decimal byte: if decimal >= 100, subtract 100 from decimal and apply a negative sign.
-- CO2 is encoded as `ppm / 10` to fit this generic 2-byte numeric format. To decode CO2 in ppm: `(whole + decimal/100) * 10`.
+- Missing sensors are omitted by clearing their presence bit and zeroing their field bytes.
+- The broadcaster does not expose a GATT server in normal builds.
+- Sensor sleep time still comes from the persisted local settings when the node boots.
+- The central reads the reported sleep duration from bytes 5-8 and compares it against its target sleep value before sending a downlink update.
+- The device name is still persisted, but it is advertised via scan response rather than primary advertisement data.
 
-### Connectable
+#### Downlink sleep update window
 
-The connectable part will only be active if `CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED=y` and will be visible for the same time as the broadcaster. However, if you are connected to the device, it will stay active until you disconnect or the inactivity timer is reached (`CONFIG_BLE_CONN_TIMEOUT_SEC`). The connectable part will advertise using `GATT` a service with the following UUID `0xAFBE` and with the following characteristics:
+After each uplink advertising burst, the node opens a 200 ms active scan window.
+If a valid downlink payload is received, the node updates its sleep duration in RAM and then persists it through the existing settings flow.
 
-- `0xAFBF` : This characteristic will allow you to `read/write` the `sleep time` of the device. The value is a 16 bit unsigned integer that represents the number of seconds that the device will sleep. The value is stored in little endian format. The value is stored in flash memory using settings/NVS and loaded at boot.
-  The DFU mode won't be visible if the user hasn't pressed the button1 before the device start advertising for the duration specified in `CONFIG_BLE_DFU_ADV_DURATION_SEC`.
+Downlink payload format expected in advertisement/scan response data:
+
+| Offset | Len | Field          | Type   | Notes                   |
+| ------ | --- | -------------- | ------ | ----------------------- |
+| 0      | 2   | Company ID     | uint16 | `0x0059`, little-endian |
+| 2      | 2   | Target Node ID | uint16 | Must match node's ID    |
+| 4      | 4   | Sleep Duration | uint32 | Seconds                 |
+
+When `CONFIG_BLE_GATEWAY_MAC_ADDR` is set, only downlink frames from that MAC address are accepted.

@@ -14,5 +14,6 @@ int app_settings_persist_sleep_time_if_changed(void);
 
 const char *app_settings_get_device_name(void);
 const char *app_settings_get_device_mac(void);
+uint8_t app_settings_get_device_node_id(void);
 
 #endif /* APP_SETTINGS_H_ */

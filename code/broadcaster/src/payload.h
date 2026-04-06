@@ -3,52 +3,66 @@
  *
  * Payload encoding module for BLE advertisement data
  *
- * Encodes sensor data into a standardized 25-byte service data format.
+ * Encodes sensor data into a standardized 29-byte service data format.
  * Author: Nils Lahaye (2024)
  */
 
 #ifndef PAYLOAD_H_
 #define PAYLOAD_H_
 
+#include "utils.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "utils.h"
+
+
+#ifndef BIT
+#define BIT(n) (1U << (n))
+#endif
+
+#define PAYLOAD_SIZE 29
+
+#define PAYLOAD_COMPANY_ID 0x0059
+#define PAYLOAD_PRESENT_TEMP BIT(0)
+#define PAYLOAD_PRESENT_HUM BIT(1)
+#define PAYLOAD_PRESENT_LUM BIT(2)
+#define PAYLOAD_PRESENT_CO2 BIT(3)
+#define PAYLOAD_PRESENT_GND_TEMP BIT(4)
+#define PAYLOAD_PRESENT_GND_HUM BIT(5)
+#define PAYLOAD_PRESENT_BAT BIT(6)
 
 /**
  * @brief Encode sensor data into BLE advertisement payload
  *
- * Packs sensor readings into a 25-byte service data format.
+ * Packs sensor readings into a 29-byte service data format.
  *
- * **Payload Format (25 bytes total):**
- * - Bytes 0-1: Service UUID (0xABCD)
- * - Bytes 2-3: Packet counter (uint16_t, little-endian)
- * - Bytes 4-6:   Temperature    [ID=1] [whole] [decimal]
- * - Bytes 7-9:   Humidity       [ID=2] [whole] [decimal]
- * - Bytes 10-12: CO2            [ID=6] [whole/10] [decimal]
- * - Bytes 13-15: Luminosity     [ID=3] [whole] [decimal]
- * - Bytes 16-18: Ground Temp    [ID=4] [whole] [decimal]
- * - Bytes 19-21: Ground Humidity[ID=5] [whole] [decimal]
- * - Bytes 22-24: Battery        [ID=254][whole] [decimal]
- *
- * **Value Encoding (3 bytes per sensor):**
- * - Each float is decomposed into whole and decimal parts
- * - Negative values: decimal += 100 to encode sign
- *   Example: -5.3 → whole=255 (0xFF), decimal=103 (5 + 100, sign in whole)
- *   Example: 23.5 → whole=23, decimal=50
- * - CO2 is pre-divided by 10 before encoding to fit the format
- *   Example: 2000 ppm → 200.0 → whole=200, decimal=0
+ * **Payload Format (29 bytes total):**
+ * - Bytes 0-1: Company ID (0x0059, little-endian)
+ * - Bytes 2-3: Node ID (uint16_t, little-endian)
+ * - Byte 4: Sequence counter (uint8_t)
+ * - Bytes 5-8: Current sleep duration in seconds (uint32_t)
+ * - Bytes 9-10: Air temperature (int16_t, 0.01 °C)
+ * - Bytes 11-12: Air humidity (uint16_t, 0.01 %RH)
+ * - Bytes 13-16: Luminosity (uint32_t, lux)
+ * - Bytes 17-18: CO2 (uint16_t, ppm)
+ * - Bytes 19-20: Ground temperature (int16_t, 0.01 °C)
+ * - Bytes 21-22: Ground humidity (uint16_t, 0.01 %RH)
+ * - Bytes 23-24: Battery (uint16_t, 0.01 V)
+ * - Byte 25: Presence bitmap
+ * - Bytes 26-28: Reserved, set to 0x00
  *
  * @param data Pointer to sensor data structure
  * @param buf Output buffer (must be at least 25 bytes)
  * @param buf_len Length of output buffer
+ * @param present_mask Bitmap describing which sensor fields are valid
  * @return 0 on success, negative error code on failure
  */
-int payload_encode(const sensors_data_t *data, uint8_t *buf, size_t buf_len);
+int payload_encode(const sensors_data_t *data, uint8_t *buf, size_t buf_len,
+                   uint8_t present_mask, uint32_t sleep_duration_sec);
 
 /**
  * @brief Get the size of the encoded payload
  *
- * @return size_t Payload size in bytes (always 25)
+ * @return size_t Payload size in bytes (always 29)
  */
 size_t payload_get_size(void);
 

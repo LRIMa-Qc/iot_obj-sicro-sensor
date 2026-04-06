@@ -34,8 +34,15 @@ LOG_MODULE_REGISTER(MAIN, CONFIG_MAIN_LOG_LEVEL);
 
 //==================================================================================================
 // Bluetooth defines
-#define SERVICE_UUID_1 0xAB
-#define SERVICE_UUID_2 0xCD
+#define COMPANY_ID_LE 0x0059
+#define PAYLOAD_SIZE 25
+#define BIT_TEMP 0x01
+#define BIT_HUM 0x02
+#define BIT_LUM 0x04
+#define BIT_CO2 0x08
+#define BIT_GND_TEMP 0x10
+#define BIT_GND_HUM 0x20
+#define BIT_BAT 0x40
 //==================================================================================================
 
 //==================================================================================================
@@ -123,46 +130,93 @@ int convertArray(uint8_t* array, size_t length, char* result, size_t resultSize)
  * @param resultSize
  * @param startIndex
 */
-int convertToMyrio(uint8_t* array, size_t length, char* result, size_t resultSize, uint8_t startIndex)
+int convertToMyrio(uint8_t *array, size_t length, char *result, size_t resultSize, uint8_t startIndex)
 {
+	if (length < PAYLOAD_SIZE) {
+		return 1;
+	}
+
 	uint8_t currentIndex = startIndex;
+	uint16_t nodeId = (uint16_t)array[2] | ((uint16_t)array[3] << 8);
+	uint8_t sequence = array[4];
+	uint8_t presentMask = array[21];
 
-	// Get the current packet number 
-	char key = valueDict[array[2]];
-	int whole = array[3];
-
-	// Add the packet number to the result string
-	int bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "%c=%d", key, whole);
+	int bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "I=%02uP=%u", nodeId, sequence);
 	if (bytesWritten < 0 || bytesWritten >= resultSize - currentIndex) {
 		return 1;
 	}
 	currentIndex += bytesWritten;
 
-	// Start looping from the 4th byte of the array
-	for (size_t i = 4; i < length; i += 3) {
-		
-		// Get the key of the value (ex : T for temperature)
-		key = valueDict[array[i]];
-
-		// Check if the key is valid (ex : if the key is 0, it means that the value is invalid)
-		if (key == 0) {
-			LOG_WRN("Invalid key\n\r");
-			return 1;
-		}
-
-		// Get the whole part of the value 
-		whole = array[i + 1];
-
-		// Get the decimal part of the value
-		int decimal = array[i + 2];
-
-		// Put the key and the value in the result string
-		bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "%c=%d.%02d", key, whole, decimal);
+	if (presentMask & BIT_TEMP) {
+		int16_t temp = (int16_t)((uint16_t)array[5] | ((uint16_t)array[6] << 8));
+		bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "T=%d.%02d",
+				temp / 100, abs(temp % 100));
 		if (bytesWritten < 0 || bytesWritten >= resultSize - currentIndex) {
 			return 1;
 		}
 		currentIndex += bytesWritten;
 	}
+
+	if (presentMask & BIT_HUM) {
+		uint16_t hum = (uint16_t)array[7] | ((uint16_t)array[8] << 8);
+		bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "H=%u.%02u",
+				hum / 100, hum % 100);
+		if (bytesWritten < 0 || bytesWritten >= resultSize - currentIndex) {
+			return 1;
+		}
+		currentIndex += bytesWritten;
+	}
+
+	if (presentMask & BIT_LUM) {
+		uint32_t lum = (uint32_t)array[9] | ((uint32_t)array[10] << 8) |
+			      ((uint32_t)array[11] << 16) | ((uint32_t)array[12] << 24);
+		bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "L=%lu",
+				(unsigned long)lum);
+		if (bytesWritten < 0 || bytesWritten >= resultSize - currentIndex) {
+			return 1;
+		}
+		currentIndex += bytesWritten;
+	}
+
+	if (presentMask & BIT_CO2) {
+		uint16_t co2 = (uint16_t)array[13] | ((uint16_t)array[14] << 8);
+		bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "C=%u", co2);
+		if (bytesWritten < 0 || bytesWritten >= resultSize - currentIndex) {
+			return 1;
+		}
+		currentIndex += bytesWritten;
+	}
+
+	if (presentMask & BIT_GND_TEMP) {
+		int16_t gtemp = (int16_t)((uint16_t)array[15] | ((uint16_t)array[16] << 8));
+		bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "S=%d.%02d",
+				gtemp / 100, abs(gtemp % 100));
+		if (bytesWritten < 0 || bytesWritten >= resultSize - currentIndex) {
+			return 1;
+		}
+		currentIndex += bytesWritten;
+	}
+
+	if (presentMask & BIT_GND_HUM) {
+		uint16_t ghum = (uint16_t)array[17] | ((uint16_t)array[18] << 8);
+		bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "V=%u.%02u",
+				ghum / 100, ghum % 100);
+		if (bytesWritten < 0 || bytesWritten >= resultSize - currentIndex) {
+			return 1;
+		}
+		currentIndex += bytesWritten;
+	}
+
+	if (presentMask & BIT_BAT) {
+		uint16_t bat = (uint16_t)array[19] | ((uint16_t)array[20] << 8);
+		bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "B=%u.%02u",
+				bat / 100, bat % 100);
+		if (bytesWritten < 0 || bytesWritten >= resultSize - currentIndex) {
+			return 1;
+		}
+		currentIndex += bytesWritten;
+	}
+
 	return 0;
 }
 
@@ -174,41 +228,38 @@ int convertToMyrio(uint8_t* array, size_t length, char* result, size_t resultSiz
  * @param srv_data
  * @return static bool
 */
-static bool isNewAdvertisingPacket(char* name, char* addr, struct service_data* srv_data) {
-	// Check if it has the right servie UUID
-	if (srv_data->data[0] != SERVICE_UUID_1 || srv_data->data[1] != SERVICE_UUID_2) {
+static bool isNewAdvertisingPacket(char *name, char *addr, struct service_data *srv_data)
+{
+	if (srv_data->len < PAYLOAD_SIZE) {
 		return false;
 	}
 
-	// Get the packet number
-	if(valueDict[srv_data->data[2]] != 'P') return false;
-	uint8_t packetNumber = srv_data->data[3];
+	uint16_t companyId = (uint16_t)srv_data->data[0] | ((uint16_t)srv_data->data[1] << 8);
+	if (companyId != COMPANY_ID_LE) {
+		return false;
+	}
 
-	// Create a new device
+	uint16_t nodeId = (uint16_t)srv_data->data[2] | ((uint16_t)srv_data->data[3] << 8);
+	uint8_t packetNumber = srv_data->data[4];
+
 	struct remote_device_t newDevice = {
 		.name = name,
 		.addr = addr,
 		.packetNumber = packetNumber,
 	};
 
-	// Get the device at the index of the two last char of the name (ex : 01, or 23)
-	uint8_t index = atoi(name + strlen(name) - 2);
-	struct remote_device_t device = remoteDevices[index];
-
-	// Check if the device is the same as the last one
+	struct remote_device_t device = remoteDevices[nodeId % 100];
 	if (strcmp(device.name, newDevice.name) == 0 && strcmp(device.addr, newDevice.addr) == 0) {
-		// Check if the packet number is the same as the last one
-		if (device.packetNumber == newDevice.packetNumber) return false;
+		if (device.packetNumber == newDevice.packetNumber) {
+			return false;
+		}
 
-		// Update the packet number of the device
 		device.packetNumber = newDevice.packetNumber;
-		remoteDevices[index] = device;
-
+		remoteDevices[nodeId % 100] = device;
 		return true;
 	}
 
-	// Update the device
-	remoteDevices[index] = newDevice;
+	remoteDevices[nodeId % 100] = newDevice;
 	return true;
 }
 
@@ -232,16 +283,11 @@ static void send_value(char* name, char* addr, struct service_data* srv_data)
 	// Data sent via UART
 	char myrioData[MAX_MYRIO_DATA_LEN];
 
-	myrioData[0] = 'I'; // Device ID
-	myrioData[1] = '='; // Separator
-	// Get the two last char of the name and set them as the device ID
-	myrioData[2] = name[strlen(name) - 2];
-	myrioData[3] = name[strlen(name) - 1];
-
-	LOG_IF_ERR(convertToMyrio(srv_data->data, srv_data->len, myrioData, sizeof(myrioData), 4), "Error converting data to string\n"); // Convert data to string
+	myrioData[0] = '\0';
+	LOG_IF_ERR(convertToMyrio(srv_data->data, srv_data->len, myrioData, sizeof(myrioData), 0), "Error converting data to string\n"); // Convert data to string
 
 	printk("Myrio data: %s\n", myrioData);
-	uart_tx(uart1, myrioData, sizeof(myrioData), SYS_FOREVER_MS); // Send data via UART1
+	uart_tx(uart1, myrioData, strlen(myrioData), SYS_FOREVER_MS); // Send data via UART1
 
 	// Toggle LED
 	gpio_pin_set(led0.port, led0.pin, isLedOn); // Toggle LED

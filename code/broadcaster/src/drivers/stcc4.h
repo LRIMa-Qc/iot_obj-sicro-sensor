@@ -57,4 +57,6 @@ int stcc4_read(float *temperature, float *humidity);
 
 int stcc4_read_co2(float *co2);
 
+int stcc4_read_all(float *temperature, float *humidity, float *co2);
+
 #endif /* STCC4_H_ */
