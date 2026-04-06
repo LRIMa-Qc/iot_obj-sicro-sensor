@@ -6,7 +6,8 @@ import subprocess
 import os
 import sys
 from collections import OrderedDict
-from bleak import BleakClient, BleakScanner, BleakError, BleakGATTProtocolError
+from bleak import BleakClient, BleakScanner
+from bleak.exc import BleakError, BleakGATTProtocolError
 from device import Device
 
 # --- Constants ---
@@ -135,7 +136,15 @@ class BleakScanning:
                 return devices
 
             devices = parse_to_json(output)
-            usb_adapters = [d["device"] for d in devices if d.get("status") == "UP RUNNING" and d.get("bus") == "USB"]
+            usb_adapters = [
+                d["device"]
+                for d in devices
+                if d.get("bus") == "USB" and "UP RUNNING" in d.get("status", "")
+            ]
+
+            if not usb_adapters:
+                usb_adapters = [d["device"] for d in devices if d.get("bus") == "USB"]
+
             return usb_adapters[0] if usb_adapters else None
         except Exception as e:
             print(f"Error getting USB Bluetooth adapters: {e}")
