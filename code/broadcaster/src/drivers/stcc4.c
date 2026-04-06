@@ -21,6 +21,8 @@ static uint16_t humi_sample;
 static int64_t last_sample_ts_ms;
 
 #define STCC4_SAMPLE_CACHE_WINDOW_MS 250
+#define STCC4_SAMPLE_WAIT_MAX_MS 10000
+#define STCC4_SAMPLE_WAIT_RETRY_MS 250
 
 static const struct stcc4_cmd stcc4_cmds[] = {
     [STCC4_CMD_START_CONTINUOUS] = {0x218BU, 0U},
@@ -120,8 +122,18 @@ static int stcc4_fetch_sample(void)
     {
         if (stcc4_mode == STCC4_MODE_CONTINUOUS)
         {
-            LOG_DBG("Measurement not ready yet");
-            return 0;
+            if ((ret == -EIO) || (ret == -ENXIO) || (ret == -EBUSY)
+#ifdef EREMOTEIO
+                || (ret == -EREMOTEIO)
+#endif
+            )
+            {
+                LOG_DBG("Measurement not ready yet");
+                return -EAGAIN;
+            }
+
+            LOG_ERR("Failed to read sample data in continuous mode (%d)", ret);
+            return ret;
         }
 
         LOG_ERR("Failed to read sample data");
@@ -135,6 +147,38 @@ static int stcc4_fetch_sample(void)
     last_sample_ts_ms = k_uptime_get();
 
     return 0;
+}
+
+static int stcc4_wait_for_sample(int64_t max_wait_ms)
+{
+    int ret;
+    int64_t deadline_ms = k_uptime_get() + max_wait_ms;
+    uint16_t retries = 0U;
+
+    do
+    {
+        ret = stcc4_fetch_sample();
+        if (ret == 0)
+        {
+            return 0;
+        }
+
+        if (ret != -EAGAIN)
+        {
+            return ret;
+        }
+
+        retries++;
+        if ((retries % 4U) == 0U)
+        {
+            LOG_DBG("Measurement not ready yet (retry %u)", retries);
+        }
+
+        k_msleep(STCC4_SAMPLE_WAIT_RETRY_MS);
+    } while (k_uptime_get() < deadline_ms);
+
+    LOG_ERR("Timeout waiting for valid STCC4 sample (%lld ms)", max_wait_ms);
+    return -ETIMEDOUT;
 }
 
 int stcc4_init(void)
@@ -167,11 +211,6 @@ int stcc4_init(void)
     id_lo = sys_get_be16(&rx_buf[3]);
     LOG_INF("Product ID: 0x%04x%04x", id_hi, id_lo);
 
-    if (stcc4_mode == STCC4_MODE_CONTINUOUS)
-    {
-        RET_IF_ERR(stcc4_write_command(STCC4_CMD_START_CONTINUOUS), "Failed to start continuous measurement");
-    }
-
     has_sample = false;
     last_sample_ts_ms = 0;
     isInitialized = true;
@@ -183,7 +222,9 @@ int stcc4_init(void)
 int stcc4_read(float *temperature, float *humidity)
 {
     int ret;
+    int stop_ret;
     int64_t tmp;
+    bool started_continuous = false;
 
     LOG_INF("Reading sensor");
 
@@ -193,7 +234,33 @@ int stcc4_read(float *temperature, float *humidity)
         return 1;
     }
 
-    ret = stcc4_fetch_sample();
+    if (stcc4_mode == STCC4_MODE_CONTINUOUS)
+    {
+        ret = stcc4_write_command(STCC4_CMD_START_CONTINUOUS);
+        if (ret < 0)
+        {
+            LOG_ERR("Failed to start continuous measurement (%d)", ret);
+            return ret;
+        }
+
+        started_continuous = true;
+    }
+
+    ret = stcc4_wait_for_sample(STCC4_SAMPLE_WAIT_MAX_MS);
+
+    if (started_continuous)
+    {
+        stop_ret = stcc4_write_command(STCC4_CMD_STOP_CONTINUOUS);
+        if (stop_ret < 0)
+        {
+            LOG_WRN("Failed to stop continuous measurement after read (%d)", stop_ret);
+            if (ret == 0)
+            {
+                return stop_ret;
+            }
+        }
+    }
+
     if (ret < 0)
     {
         return ret;
@@ -216,6 +283,8 @@ int stcc4_read(float *temperature, float *humidity)
 int stcc4_read_co2(float *co2)
 {
     int ret;
+    int stop_ret;
+    bool started_continuous = false;
 
     LOG_INF("Reading co2");
 
@@ -231,7 +300,33 @@ int stcc4_read_co2(float *co2)
      */
     if (!has_sample || (k_uptime_get() - last_sample_ts_ms) > STCC4_SAMPLE_CACHE_WINDOW_MS)
     {
-        ret = stcc4_fetch_sample();
+        if (stcc4_mode == STCC4_MODE_CONTINUOUS)
+        {
+            ret = stcc4_write_command(STCC4_CMD_START_CONTINUOUS);
+            if (ret < 0)
+            {
+                LOG_ERR("Failed to start continuous measurement for CO2 read (%d)", ret);
+                return ret;
+            }
+
+            started_continuous = true;
+        }
+
+        ret = stcc4_wait_for_sample(STCC4_SAMPLE_WAIT_MAX_MS);
+
+        if (started_continuous)
+        {
+            stop_ret = stcc4_write_command(STCC4_CMD_STOP_CONTINUOUS);
+            if (stop_ret < 0)
+            {
+                LOG_WRN("Failed to stop continuous measurement after CO2 read (%d)", stop_ret);
+                if (ret == 0)
+                {
+                    return stop_ret;
+                }
+            }
+        }
+
         if (ret < 0)
         {
             return ret;

@@ -65,13 +65,17 @@ static void read(void) {
 	LOG_INF("Reading sensors data");
 
 	// Read the temperature and humidity
-	if (ptr_temp_hum_read != NULL)
+	if (ptr_temp_hum_read != NULL) {
 		LOG_IF_ERR(ptr_temp_hum_read(&sensors_data.temp, &sensors_data.hum), "Unable to read temperature and humidity");
-	else LOG_WRN("No temperature and humidity sensor found");
+	} else {
+		LOG_WRN("No temperature and humidity sensor found");
+	}
+	if (ptr_co2_read != NULL) {
+		LOG_IF_ERR(ptr_co2_read(&sensors_data.co2), "Unable to read co2");
+	} else {
+		sensors_data.co2 = 0;
+	}
 
-	if (ptr_co2_read != NULL) LOG_IF_ERR(ptr_co2_read(&sensors_data.co2), "Unable to read co2");
-	else sensors_data.co2 = 0;
-	
 	// Read the luminosity
 	LOG_IF_ERR(luminosity_read(&sensors_data.lum), "Unable to read luminosity");
 	// Read the ground temperature
