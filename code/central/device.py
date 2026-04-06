@@ -1,84 +1,86 @@
-from queue import Queue
 from abc import ABC
+from ast import literal_eval
+
 
 class Device(ABC):
+    COMPANY_ID = 0x0059
+    PAYLOAD_SIZE = 25
 
     def __init__(self, line) -> None:
-        """
-        Create a new device from the data
-        
-        Args:
-            data (str): The data from the scan (format is a Tuples: ('name', 'addr', service_data))
+        """Create a new device from a scan record or legacy tuple."""
+        self.__name = ""
+        self.__addr = ""
+        self.__data = {}
+        self.__id = -1
+        self.__index = "00"
+        self.__node_id = -1
+        self.__liste_int_data = []
 
-            name: LRIMa test 1
-            addr: 00:00:00:00:00:00
-            sercice_data: {'0000cdab-0000-1000-8000-00805f9b34fb': b'\\x00\\x95\\x01\\x160\\x02\\x18\\x02\\x03\\x1c6\\x04\\x16\\x15\\x05\\x00\\x00\\xfe\\x02\\\\'}
-            
-        """
-        #GET NAME ADDR AND DATA
+        if isinstance(line, str):
+            try:
+                line = literal_eval(line)
+            except Exception:
+                return
+
+        if not isinstance(line, tuple) or len(line) != 3:
+            return
+
         self.__name = line[0]
         self.__addr = line[1]
         self.__data = line[2]
-        
-        #INIT THE ID
-        self.__id = -1
+        self.__index = self.__name[-2:] if len(self.__name) >= 2 else "00"
 
-        #GET INDEX OF DEVICE
-        self.__index = self.__name[-2:]
-                
-        #GET UUID AND DATA
-        if self.__data == {}:
+        if not self.__data:
             return
-        self.__uuid, self.__byte_data = next(iter(self.__data.items()))
 
-        # CHECK IF ITS THE RIGHT SERVICE
-        # Extract the first section before the hyphen
-        first_section_uuid = self.__uuid.split('-')[0]
-
-        # Check if 'a', 'b', 'c', and 'd' are present in the first section
-        validity_uuid = all(letter in first_section_uuid for letter in ['a', 'b', 'c', 'd'])
-        if not validity_uuid:
-            return None 
+        # Extract company ID (UUID) and service data bytes from the dict
+        company_id, byte_data = next(iter(self.__data.items()))
         
-        # CONVERT THE DATA FROM BYTES TO INT
-        self.__liste_int_data = list(self.__byte_data)
-
-        # CHECK IF THE FIRST BYTE IS 0
-        if self.__liste_int_data[0] != 0:
-            return None 
+        # Convert company ID to little-endian bytes and prepend to payload
+        if isinstance(company_id, int):
+            company_id_bytes = [company_id & 0xFF, (company_id >> 8) & 0xFF]
+        else:
+            # If it's already bytes, use as-is
+            company_id_bytes = list(company_id)
         
-        # SET THE ID
-        self.__id=self.__liste_int_data[1]
-    
+        payload = company_id_bytes + list(byte_data)
+        self.__liste_int_data = payload
+
+        if len(payload) >= self.PAYLOAD_SIZE and payload[0] == (self.COMPANY_ID & 0xFF):
+            company_id = int.from_bytes(bytes(payload[0:2]), byteorder="little")
+            if company_id != self.COMPANY_ID:
+                return
+
+            self.__node_id = int.from_bytes(bytes(payload[2:4]), byteorder="little")
+            self.__index = f"{self.__node_id:02d}"
+            self.__id = payload[4]
+            return
+
+        if len(payload) >= 2:
+            self.__id = payload[1]
+
     @property
     def index(self) -> str:
-        """Get the index of the sensor"""
         return self.__index
 
     @property
     def id(self) -> int:
-        '''Get the current id'''
         return self.__id
 
     @property
-    #CHANGE ONCE WE FIGURE OUT WHY 0000
     def addr(self) -> str:
-        '''Get the mac address of the Device'''
-        return self.__name
+        return self.__addr
 
     @property
     def name(self) -> str:
-        '''Get the name of the device'''
         return self.__name
 
     @property
-    def data(self) -> int:
-        '''Get the data'''
+    def data(self) -> list[int]:
         return self.__liste_int_data
 
     def __eq__(self, __value: object) -> bool:
-        """Compare if the two devices are identical"""
-        if not isinstance(object, Device):
+        if not isinstance(__value, Device):
             return False
 
-        return self.__addr == object.addr and self.__name == object.name
+        return self.__addr == __value.addr and self.__name == __value.name
