@@ -305,7 +305,7 @@ class BleakScanning:
             return
 
         name = device.name
-        if not name or LRIMA_NAME_PREFIX not in name or LRIMA_CONN_SUBSTRING in name:
+        if not name or LRIMA_NAME_PREFIX not in name:
             return
 
         self._update_discovered_device_cache(device)
