@@ -61,23 +61,23 @@ Note: If flashing fails, use the `erase and flash` option to perform a full eras
 The board supports over-the-air firmware updates. To prepare an update:
 
 1. Build the application as described above
-2. Locate the `app_update.bin` file in the `build/zephyr` folder
+2. Locate the signed image in the sysbuild app domain: `build/broadcaster/zephyr/zephyr.signed.bin`
 3. Transfer this file to your phone
 4. Press and hold button1 until the LED is on, then release
 5. You will have up to 60 seconds (configurable via `CONFIG_BLE_DFU_ADV_DURATION_SEC`) to start the update
 6. Use the [nRF Connect mobile app](https://www.nordicsemi.com/Products/Development-tools/nrf-connect-for-mobile) to connect to the device (named with your `CONFIG_BLE_USER_DEFINED_NAME`)
-7. Go to the `DFU` tab and select the `app_update.bin` file
+7. Go to the `DFU` tab and select `zephyr.signed.bin`
 8. Press `Upload` and monitor the progress
 
 ![Button1](doc/img/Button1.png)
 
 #### Device Functionality
 
-The device is split in two parts, the broadcaster and the connectable. The broadcaster is the part that will send the data to the central. The connectable is the part that will be used to update the firmware over the air and to change the sleep time of the device. The user can wake up the device at any time by pressing the button1.
+The broadcaster uses a single BLE advertising workflow. It sends sensor data uplink and then opens a short scan window to receive a downlink sleep update when needed. The user can wake up the device at any time by pressing button1. There is never a connection established, and all communication is done through advertisements and scan responses.
 
 ##### Broadcaster
 
-The broadcaster collects sensor data and transmits it via BLE 5.0 extended advertising:
+The broadcaster collects sensor data and transmits it BLE advertisements:
 
 **Supported sensors:**
 
@@ -88,20 +88,14 @@ The broadcaster collects sensor data and transmits it via BLE 5.0 extended adver
 **Transmission behavior:**
 
 - Sends data at intervals specified by `CONFIG_SENSOR_SLEEP_DURATION_SEC`
-- Intervals can be modified via the connectable service
-- Uses BLE extended advertising for the duration specified in `CONFIG_BLE_ADV_DURATION_SEC`
+- Uses BLE advertising for the duration specified in `CONFIG_BLE_ADV_DURATION_SEC`
+- Publishes a 29-byte service payload containing company ID, node ID, sequence, sleep duration, sensor values, and a presence bitmap
+- Opens an active scan window after uplink to receive sleep updates sent by the central
 - Beacon payload structure is shown below:
 
 ![Broadcaster data.](doc/img/broadcaster-data.png)
 
-> **Note:** The diagram above does not include the CO2 sensor data. CO2 concentration is transmitted as an additional sensor value in the beacon payload. (value needs to be multiplied by 10 to get the actual concentration in ppm)
-
-##### Connectable
-
-The connectable part will only be active if `CONFIG_SENSOR_SLEEP_MODIFICATION_ENABLED=y` and will be visible for the same time as the broadcaster. However, if you are connected to the device, it will stay active until you disconnect or the inactivity timer is reached (`CONFIG_BLE_CONN_TIMEOUT_SEC`). The connectable part will advertise using `GATT` a service with the following UUID `0xAFBE` and with the following characteristics:
-
-- `0xAFBF` : This characteristic will allow you to `read/write` the `sleep time` of the device. The value is a 16 bit unsigned integer that represents the number of seconds that the device will sleep. The value is stored in little endian format. The value is stored in the flash memory of the device and will be loaded at boot. The value will be reset to the default value if the device is reset.
-  The DFU mode won't be visible if the user hasn't pressed the button1 before the device start advertising for the duration specified in `CONFIG_BLE_DFU_ADV_DURATION_SEC`.
+> **Note:** The diagram above predates the latest payload format. See the broadcaster documentation for the full 29-byte layout and presence bitmap details.
 
 ### Central-nrf
 
@@ -123,6 +117,7 @@ The central application handles BLE scanning, data collection, and integration w
 - `core/storage.py` - Persistent data management
 - `core/payload.py` - Sensor data parsing and validation
 - `core/aliot_sync.py` - ALIVEcode cloud integration
+- `core/downlink_advertiser.py` - BlueZ D-Bus advertiser for sleep-time downlink frames
 - `core/health.py` - System health monitoring
 - `core/config.py` - Configuration management
 
@@ -145,6 +140,8 @@ The central application handles BLE scanning, data collection, and integration w
 
    (Using a Python virtual environment is recommended)
 
+   `dbus-next` is required because downlink sleep updates are emitted through BlueZ D-Bus advertising APIs.
+
 4. Run the application:
 
    ```bash
@@ -154,3 +151,4 @@ The central application handles BLE scanning, data collection, and integration w
 5. Power on the broadcaster devices
 
 The application will automatically scan for and connect to broadcaster devices, collecting sensor data and synchronizing with ALIVEcode.
+It publishes each node under `/doc/<device_index>` including `/doc/<device_index>/sleep_duration_sec`, and uses `/doc/sleep_time` as the desired target for downlink sleep updates.

@@ -66,7 +66,11 @@ bluetoothd --version
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+# Raspberry Pi 4
+pip install -r requirements_pi4.txt
+
+# Raspberry Pi 5
+pip install -r requirements_pi5.txt
 ```
 
 `dbus-next` is required for Pi downlink advertising (BlueZ D-Bus LEAdvertisement1).
@@ -78,7 +82,9 @@ If you install packages manually, ensure this dependency is present.
 python main.py
 ```
 
-The central publishes each broadcaster under `/doc/<device_index>` and now includes the node's reported sleep interval at `/doc/<device_index>/sleep`.
+The central publishes each broadcaster under `/doc/<device_index>` and includes the node's reported sleep interval at `/doc/<device_index>/sleep_duration_sec`.
+
+Sleep updates are received from ALIVEcode on `/doc/sleep_time`, and they are sent to nodes via short BlueZ advertisements.
 
 # USING SERVICES
 

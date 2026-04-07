@@ -31,7 +31,7 @@ Note : If the board is giving out an error when flashing try these steps :
 4. Try to flash the board using the `erase and flash` option
 5. Verify the soldering of the board
 
-To reset persisted settings (`sleep time`, `device name`, `device MAC`) and re-apply values from `prj.conf`, you must use **erase and flash** (a normal flash keeps existing settings in NVS).
+To reset persisted settings (`sleep time`, `device name`, `device MAC`, `device node ID`) and re-apply values from `prj.conf`, you must use **erase and flash** (a normal flash keeps existing settings in NVS).
 
 #### J-Link setup
 
@@ -62,22 +62,23 @@ Edit **prj.conf**:
 
 ```
 CONFIG_BLE_USER_DEFINED_MAC_ADDR="f0:ca:f0:ca:01:e8"  # Change per device
-CONFIG_BLE_USER_DEFINED_NAME="LRIMa 67"              # Change per device (must end with number)
 CONFIG_BLE_NODE_ID=67                                  # Change per device
+# Optional: restrict downlink updates to one gateway MAC
+CONFIG_BLE_GATEWAY_MAC_ADDR="aa:bb:cc:dd:ee:ff"
 ```
 
 **Generate unique MAC address:** Use [MAC Address Generator](https://dnschecker.org/mac-address-generator.php)
 
 Persistence behavior:
 
-- `sleep time`, `device name`, and `device MAC` are stored in flash through settings/NVS.
+- `sleep time`, `device name`, `device MAC`, and `device node ID` are stored in flash through settings/NVS.
 - On first boot (or after erase), values from `prj.conf` are used as defaults and saved.
 - On next boots, persisted values are loaded from flash.
 - To force new defaults from `prj.conf`, perform **erase and flash**.
 
 ---
 
-Notes : If the led is turing off before you can start the flashing process, you can keep the button pressed and the sensor will keep advertising util you release the button.
+Notes : If the led turns off before you can start the flashing process, keep the button pressed and the sensor will keep advertising until you release the button.
 
 For MCUboot image versioning, this project uses the root `VERSION` file instead of `CONFIG_MCUBOOT_IMAGE_VERSION`.
 
@@ -134,8 +135,8 @@ Notes:
 
 #### Downlink sleep update window
 
-After each uplink advertising burst, the node opens a 200 ms active scan window.
-If a valid downlink payload is received, the node updates its sleep duration in RAM and then persists it through the existing settings flow.
+During each uplink cycle, the node runs active scanning in parallel with advertising, then keeps scanning for an additional 200 ms tail window. In practice, the scan window duration is `CONFIG_BLE_ADV_DURATION_SEC * 1000 + 200` ms.
+If a valid downlink payload is received, the node updates its sleep duration in RAM, may stop BLE activity early, and then persists the updated value through the existing settings flow.
 
 Downlink payload format expected in advertisement/scan response data:
 
@@ -146,3 +147,4 @@ Downlink payload format expected in advertisement/scan response data:
 | 4      | 4   | Sleep Duration | uint32 | Seconds                 |
 
 When `CONFIG_BLE_GATEWAY_MAC_ADDR` is set, only downlink frames from that MAC address are accepted.
+Sleep duration values are clamped to a valid range (minimum `1`, maximum `CONFIG_SENSOR_SLEEP_DURATION_MAX_SEC` when sleep modification is enabled).
