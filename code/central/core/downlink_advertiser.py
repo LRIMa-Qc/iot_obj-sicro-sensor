@@ -14,7 +14,7 @@ from dbus_next.constants import BusType, PropertyAccess
 from dbus_next.errors import DBusError
 from dbus_next.service import ServiceInterface, dbus_property, method
 
-from core.config import DONWLINK_ADV_DEVICE_ID, DOWNLINK_ADV_NAME
+from core.config import DOWNLINK_ADV_DEVICE_ID, DOWNLINK_ADV_NAME
 
 ADV_PATH = "/org/lrima/downlink_adv0"
 DEFAULT_DOWNLINK_DURATION_MS = 250
@@ -63,7 +63,7 @@ class _Advertisement(ServiceInterface):
 
     @dbus_property(access=PropertyAccess.READ)
     def ManufacturerData(self) -> "a{qv}":
-        return {DONWLINK_ADV_DEVICE_ID: Variant("ay", self._payload)}
+        return {DOWNLINK_ADV_DEVICE_ID: Variant("ay", self._payload)}
 
 
 class BluezDownlinkAdvertiser:

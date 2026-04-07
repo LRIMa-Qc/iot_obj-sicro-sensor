@@ -28,7 +28,9 @@
 #define GND_HUM_ID 5
 #define BAT_ID 254
 
-#define BLE_NAME = CONFIG_BLE_USER_DEFINED_NAME + " " + CONFIG_BLE_NODE_ID
+#define BLE_STRINGIFY_IMPL(x) #x
+#define BLE_STRINGIFY(x) BLE_STRINGIFY_IMPL(x)
+#define BLE_NAME CONFIG_BLE_USER_DEFINED_NAME " " BLE_STRINGIFY(CONFIG_BLE_NODE_ID)
 
 /**
  * @brief BLE state machine definition

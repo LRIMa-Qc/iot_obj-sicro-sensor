@@ -6,19 +6,19 @@ LAST_RECEIVED_TIME_FILE = "last_received_time.txt"
 OFFLINE_CSV_FILE = "data.csv"
 
 SENSOR_DEFAULTS = {
-    1: 99.99,  # temp
-    2: 99.99,  # hum
-    6: 99.99,  # co2 (stored as ppm)
-    3: 99.99,  # lum
-    4: 99.99,  # gnd temp
-    5: 99.99,  # gnd hum
-    254: 99.99,  # bat
+    1: -99,  # temp
+    2: 0,  # hum
+    6: 0,  # co2 (stored as ppm)
+    3: 0,  # lum
+    4: -99,  # gnd temp
+    5: 0,  # gnd hum
+    254: 0,  # bat
 }
 
 SENSOR_CSV_ORDER = (1, 2, 6, 3, 4, 5, 254)
 
 DOWNLINK_ADV_NAME = "LRIMa Central"
-DONWLINK_ADV_DEVICE_ID = 0x0059
+DOWNLINK_ADV_DEVICE_ID = 0x0059
 
 MAGENTA = "\033[95m"
 GRAY = "\033[90m"
