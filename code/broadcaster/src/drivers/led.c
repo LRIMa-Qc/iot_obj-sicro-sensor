@@ -60,7 +60,7 @@ int led1_set_state(bool state) {
 
     led1_state = state;
 
-    LOG_INF("LED1 state set to %d", state);
+    LOG_DBG("LED1 state set to %d", state);
 
     return 0;
 }
