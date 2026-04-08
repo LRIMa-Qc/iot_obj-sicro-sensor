@@ -19,6 +19,9 @@ static int16_t co2_sample;
 static uint16_t temp_sample;
 static uint16_t humi_sample;
 static int64_t last_sample_ts_ms;
+static bool is_in_sleep = false;
+static int64_t last_measurement_ms = 0;
+static bool needs_conditioning = false;
 
 #define STCC4_SAMPLE_CACHE_WINDOW_MS 250
 #define STCC4_SAMPLE_WAIT_MAX_MS 10000
@@ -33,6 +36,7 @@ static const struct stcc4_cmd stcc4_cmds[] = {
     [STCC4_CMD_EXIT_SLEEP] = {0x0000U, 5U},
     [STCC4_CMD_SELF_TEST] = {0x278CU, 360U},
     [STCC4_CMD_GET_PRODUCT_ID] = {0x365BU, 1U},
+    [STCC4_CMD_CONDITIONING] = {0x29BCU, STCC4_CONDITIONING_DURATION_MS},
 };
 
 static uint8_t stcc4_compute_crc(uint16_t value)
@@ -72,13 +76,8 @@ static int stcc4_write_command(uint8_t cmd)
 static int stcc4_read_reg(uint8_t *rx_buf, uint8_t rx_buf_size)
 {
     uint8_t num_words = rx_buf_size / STCC4_WORD_SIZE;
-    int ret;
 
-    ret = i2c_read_dt(&stcc4_spec, rx_buf, rx_buf_size);
-    if (ret < 0)
-    {
-        return ret;
-    }
+    RET_IF_ERR(i2c_read_dt(&stcc4_spec, rx_buf, rx_buf_size), "Failed to read register");
 
     for (uint8_t i = 0U; i < num_words; i++)
     {
@@ -102,27 +101,21 @@ static int stcc4_fetch_sample(void)
 
     if (stcc4_mode == STCC4_MODE_SINGLE_SHOT)
     {
-        ret = stcc4_write_command(STCC4_CMD_MEASURE_SINGLE_SHOT);
-        if (ret < 0)
-        {
-            LOG_ERR("Failed to trigger single-shot measurement");
-            return ret;
-        }
+        RET_IF_ERR(stcc4_write_command(STCC4_CMD_MEASURE_SINGLE_SHOT), "Failed to trigger single-shot measurement");
     }
 
-    ret = stcc4_write_command(STCC4_CMD_READ_MEASUREMENT_RAW);
-    if (ret < 0)
-    {
-        LOG_ERR("Failed to write read_measurement_raw command");
-        return ret;
-    }
+    RET_IF_ERR(stcc4_write_command(STCC4_CMD_READ_MEASUREMENT_RAW), "Failed to write read_measurement_raw command");
 
     ret = stcc4_read_reg(rx_buf, sizeof(rx_buf));
     if (ret < 0)
     {
-        if (stcc4_mode == STCC4_MODE_CONTINUOUS)
+        if(stcc4_mode != STCC4_MODE_CONTINUOUS)
         {
-            if ((ret == -EIO) || (ret == -ENXIO) || (ret == -EBUSY)
+            LOG_IF_ERR(ret, "Failed to read sample data");
+            return ret;
+        }
+        
+        if ((ret == -EIO) || (ret == -ENXIO) || (ret == -EBUSY)
 #ifdef EREMOTEIO
                 || (ret == -EREMOTEIO)
 #endif
@@ -132,12 +125,7 @@ static int stcc4_fetch_sample(void)
                 return -EAGAIN;
             }
 
-            LOG_ERR("Failed to read sample data in continuous mode (%d)", ret);
-            return ret;
-        }
-
-        LOG_ERR("Failed to read sample data");
-        return ret;
+            RET_IF_ERR(ret, "Failed to read sample data in continuous mode");
     }
 
     co2_sample = (int16_t)sys_get_be16(rx_buf);
@@ -181,6 +169,58 @@ static int stcc4_wait_for_sample(int64_t max_wait_ms)
     return -ETIMEDOUT;
 }
 
+static void stcc4_wake_if_needed(void)
+{
+    if (!is_in_sleep)
+    {
+        if ((k_uptime_get() - last_measurement_ms) <= STCC4_IDLE_TIMEOUT_MS)
+        {
+            return;
+        }
+        LOG_INF("Device idle >3 hours, conditioning needed on next measurement");
+        needs_conditioning = true;
+        return;
+    }
+
+    LOG_DBG("Waking device from sleep");
+    RET_IF_ERR(stcc4_write_command(STCC4_CMD_EXIT_SLEEP), "Failed to exit sleep mode");
+
+    is_in_sleep = false;
+    LOG_DBG("Device awake");
+}
+
+static void stcc4_sleep_if_idle(void)
+{
+    if (is_in_sleep)
+    {
+        return;
+    }
+
+    LOG_DBG("Entering sleep mode");
+    RET_IF_ERR(stcc4_write_command(STCC4_CMD_ENTER_SLEEP), "Failed to enter sleep mode");
+
+    is_in_sleep = true;
+    LOG_DBG("Device in sleep mode");
+}
+
+static int stcc4_perform_periodic_conditioning(void)
+{
+    if (!needs_conditioning)
+    {
+        return 0;
+    }
+
+    LOG_INF("Performing periodic conditioning");
+
+    RET_IF_ERR( stcc4_write_command(STCC4_CMD_CONDITIONING), "Failed to send conditioning command");
+
+    last_measurement_ms = k_uptime_get();
+    needs_conditioning = false;
+    LOG_INF("Conditioning completed");
+
+    return 0;
+}
+
 int stcc4_init(void)
 {
     uint8_t rx_buf[STCC4_RX_BUF_LEN];
@@ -199,10 +239,8 @@ int stcc4_init(void)
 
     (void)stcc4_write_command(STCC4_CMD_EXIT_SLEEP);
 
-    if (stcc4_write_command(STCC4_CMD_STOP_CONTINUOUS) < 0)
-    {
-        LOG_WRN("Failed to stop continuous measurement (may not have been running)");
-    }
+    LOG_IF_ERR(stcc4_write_command(STCC4_CMD_STOP_CONTINUOUS),
+               "Failed to stop continuous measurement (may not have been running)");
 
     RET_IF_ERR(stcc4_write_command(STCC4_CMD_GET_PRODUCT_ID), "Failed to send get_product_id command");
     RET_IF_ERR(stcc4_read_reg(rx_buf, sizeof(rx_buf)), "Failed to read product ID");
@@ -211,8 +249,18 @@ int stcc4_init(void)
     id_lo = sys_get_be16(&rx_buf[3]);
     LOG_INF("Product ID: 0x%04x%04x", id_hi, id_lo);
 
+    LOG_INF("Performing initial conditioning (22 seconds, please wait)");
+    RET_IF_ERR(stcc4_write_command(STCC4_CMD_CONDITIONING), "Failed to send conditioning command");
+    LOG_INF("Initial conditioning completed");
+
     has_sample = false;
     last_sample_ts_ms = 0;
+    last_measurement_ms = k_uptime_get();
+    needs_conditioning = false;
+    is_in_sleep = false;
+
+    stcc4_sleep_if_idle();
+
     isInitialized = true;
     LOG_INF("Init done");
 
@@ -221,10 +269,7 @@ int stcc4_init(void)
 
 int stcc4_read(float *temperature, float *humidity)
 {
-    int ret;
-    int stop_ret;
     int64_t tmp;
-    bool started_continuous = false;
 
     LOG_INF("Reading sensor");
 
@@ -234,37 +279,13 @@ int stcc4_read(float *temperature, float *humidity)
         return 1;
     }
 
-    if (stcc4_mode == STCC4_MODE_CONTINUOUS)
-    {
-        ret = stcc4_write_command(STCC4_CMD_START_CONTINUOUS);
-        if (ret < 0)
-        {
-            LOG_ERR("Failed to start continuous measurement (%d)", ret);
-            return ret;
-        }
+    stcc4_wake_if_needed();
 
-        started_continuous = true;
-    }
+    RET_IF_ERR(stcc4_perform_periodic_conditioning(), "Failed to perform periodic conditioning");
 
-    ret = stcc4_wait_for_sample(STCC4_SAMPLE_WAIT_MAX_MS);
+    RET_IF_ERR(stcc4_fetch_sample(), "Failed to fetch sample");
 
-    if (started_continuous)
-    {
-        stop_ret = stcc4_write_command(STCC4_CMD_STOP_CONTINUOUS);
-        if (stop_ret < 0)
-        {
-            LOG_WRN("Failed to stop continuous measurement after read (%d)", stop_ret);
-            if (ret == 0)
-            {
-                return stop_ret;
-            }
-        }
-    }
-
-    if (ret < 0)
-    {
-        return ret;
-    }
+    last_measurement_ms = k_uptime_get();
 
     tmp = (int64_t)temp_sample * STCC4_MAX_TEMP;
     *temperature = (float)((tmp / 65535LL) + STCC4_MIN_TEMP) + (float)((tmp % 65535LL) / 65535.0);
@@ -275,6 +296,8 @@ int stcc4_read(float *temperature, float *humidity)
     LOG_DBG("Temperature: %f", (double)*temperature);
     LOG_DBG("Humidity: %f", (double)*humidity);
 
+    stcc4_sleep_if_idle();
+
     LOG_INF("Read done");
 
     return 0;
@@ -282,9 +305,8 @@ int stcc4_read(float *temperature, float *humidity)
 
 int stcc4_read_co2(float *co2)
 {
-    int ret;
-    int stop_ret;
-    bool started_continuous = false;
+    bool need_new_sample = false;
+    int64_t cache_age_ms;
 
     LOG_INF("Reading co2");
 
@@ -294,43 +316,36 @@ int stcc4_read_co2(float *co2)
         return 1;
     }
 
-    /*
-     * stcc4_read() already fetches all channels (including CO2). Reuse a
-     * very recent sample to avoid back-to-back I2C command writes.
-     */
-    if (!has_sample || (k_uptime_get() - last_sample_ts_ms) > STCC4_SAMPLE_CACHE_WINDOW_MS)
+    /* Check if we need a fresh sample (cache expired or empty) */
+    if (!has_sample)
     {
-        if (stcc4_mode == STCC4_MODE_CONTINUOUS)
+        need_new_sample = true;
+    }
+    else
+    {
+        cache_age_ms = k_uptime_get() - last_sample_ts_ms;
+        if (cache_age_ms > STCC4_SAMPLE_CACHE_WINDOW_MS)
         {
-            ret = stcc4_write_command(STCC4_CMD_START_CONTINUOUS);
-            if (ret < 0)
-            {
-                LOG_ERR("Failed to start continuous measurement for CO2 read (%d)", ret);
-                return ret;
-            }
-
-            started_continuous = true;
+            need_new_sample = true;
         }
+    }
 
-        ret = stcc4_wait_for_sample(STCC4_SAMPLE_WAIT_MAX_MS);
+    if (need_new_sample)
+    {
+        /* Wake device if needed and check for periodic conditioning requirement */
+        stcc4_wake_if_needed();
 
-        if (started_continuous)
-        {
-            stop_ret = stcc4_write_command(STCC4_CMD_STOP_CONTINUOUS);
-            if (stop_ret < 0)
-            {
-                LOG_WRN("Failed to stop continuous measurement after CO2 read (%d)", stop_ret);
-                if (ret == 0)
-                {
-                    return stop_ret;
-                }
-            }
-        }
+        /* Perform periodic conditioning if device idle >3 hours */
+        RET_IF_ERR(stcc4_perform_periodic_conditioning(), "Failed to perform periodic conditioning");
 
-        if (ret < 0)
-        {
-            return ret;
-        }
+        /* Perform single-shot measurement */
+        RET_IF_ERR(stcc4_fetch_sample(), "Failed to fetch sample");
+
+        /* Update measurement timestamp */
+        last_measurement_ms = k_uptime_get();
+
+        /* Sleep after measurement (cache allows reuse within 250ms window) */
+        stcc4_sleep_if_idle();
     }
 
     *co2 = (float)co2_sample;
@@ -342,13 +357,62 @@ int stcc4_read_co2(float *co2)
 
 int stcc4_read_all(float *temperature, float *humidity, float *co2)
 {
-    int ret;
+    int64_t tmp;
+    bool need_new_sample = false;
+    int64_t cache_age_ms;
 
-    ret = stcc4_read(temperature, humidity);
-    if (ret < 0)
+    LOG_INF("Reading all sensor data");
+
+    if (!isInitialized)
     {
-        return ret;
+        LOG_ERR("Not initialized");
+        return 1;
     }
 
-    return stcc4_read_co2(co2);
+    /* Check if we need a fresh sample (same logic as stcc4_read_co2) */
+    if (!has_sample)
+    {
+        need_new_sample = true;
+    }
+    else
+    {
+        cache_age_ms = k_uptime_get() - last_sample_ts_ms;
+        if (cache_age_ms > STCC4_SAMPLE_CACHE_WINDOW_MS)
+        {
+            need_new_sample = true;
+        }
+    }
+
+    if (need_new_sample)
+    {
+        /* Single wake for all three reads (batched efficiency) */
+        stcc4_wake_if_needed();
+
+        /* Perform periodic conditioning if device idle >3 hours */
+        RET_IF_ERR(stcc4_perform_periodic_conditioning(), "Failed to perform periodic conditioning");
+
+        /* Perform single-shot measurement */
+        ret = stcc4_fetch_sample();
+        RET_IF_ERR(ret, "Failed to fetch sample");
+
+        /* Update measurement timestamp */
+        last_measurement_ms = k_uptime_get();
+
+        /* Sleep after all measurements (cache allows reuse within 250ms window) */
+        stcc4_sleep_if_idle();
+    }
+
+    /* Convert raw values to float */
+    tmp = (int64_t)temp_sample * STCC4_MAX_TEMP;
+    *temperature = (float)((tmp / 65535LL) + STCC4_MIN_TEMP) + (float)((tmp % 65535LL) / 65535.0);
+
+    tmp = (int64_t)humi_sample * STCC4_MAX_HUMI;
+    *humidity = (float)((tmp / 65535LL) + STCC4_MIN_HUMI) + (float)((tmp % 65535LL) / 65535.0);
+
+    *co2 = (float)co2_sample;
+
+    LOG_DBG("Temperature: %f, Humidity: %f, CO2: %f", (double)*temperature, (double)*humidity, (double)*co2);
+    LOG_INF("Read all done");
+
+    return 0;
 }
