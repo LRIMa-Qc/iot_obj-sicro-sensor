@@ -6,7 +6,7 @@
   "watch": false,
   "max_memory_restart": "800M",
   "min_uptime": "30s",
-  "restart_delay": "2s",
+  "restart_delay": 2000,
   "time": true,
   "instances": 1,
   "exec_mode": "fork"
