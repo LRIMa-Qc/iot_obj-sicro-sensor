@@ -62,13 +62,13 @@ int led1_toggle(void);
  * @brief Start the startup blink pattern for LED1
  * @return int 0 if success, -1 if error
  */
-int led_init_blink_start(void);
+int led_blink_start(void);
 
 /**
  * @brief Stop the startup blink pattern for LED1
  *
  * @return int 0 if success, -1 if error
  */
-int led_init_blink_stop(void);
+int led_blink_stop(void);
 
 #endif /* LED_H */

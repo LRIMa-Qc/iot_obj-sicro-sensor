@@ -137,49 +137,17 @@ static int stcc4_fetch_sample(void)
     return 0;
 }
 
-static int stcc4_wait_for_sample(int64_t max_wait_ms)
-{
-    int ret;
-    int64_t deadline_ms = k_uptime_get() + max_wait_ms;
-    uint16_t retries = 0U;
-
-    do
-    {
-        ret = stcc4_fetch_sample();
-        if (ret == 0)
-        {
-            return 0;
-        }
-
-        if (ret != -EAGAIN)
-        {
-            return ret;
-        }
-
-        retries++;
-        if ((retries % 4U) == 0U)
-        {
-            LOG_DBG("Measurement not ready yet (retry %u)", retries);
-        }
-
-        k_msleep(STCC4_SAMPLE_WAIT_RETRY_MS);
-    } while (k_uptime_get() < deadline_ms);
-
-    LOG_ERR("Timeout waiting for valid STCC4 sample (%lld ms)", max_wait_ms);
-    return -ETIMEDOUT;
-}
-
-static void stcc4_wake_if_needed(void)
+static int stcc4_wake_if_needed(void)
 {
     if (!is_in_sleep)
     {
         if ((k_uptime_get() - last_measurement_ms) <= STCC4_IDLE_TIMEOUT_MS)
         {
-            return;
+            return 0;
         }
         LOG_INF("Device idle >3 hours, conditioning needed on next measurement");
         needs_conditioning = true;
-        return;
+        return 0;
     }
 
     LOG_DBG("Waking device from sleep");
@@ -187,13 +155,15 @@ static void stcc4_wake_if_needed(void)
 
     is_in_sleep = false;
     LOG_DBG("Device awake");
+
+    return 0;
 }
 
-static void stcc4_sleep_if_idle(void)
+static int stcc4_sleep_if_idle(void)
 {
     if (is_in_sleep)
     {
-        return;
+        return 0;
     }
 
     LOG_DBG("Entering sleep mode");
@@ -201,6 +171,8 @@ static void stcc4_sleep_if_idle(void)
 
     is_in_sleep = true;
     LOG_DBG("Device in sleep mode");
+
+    return 0;
 }
 
 static int stcc4_perform_periodic_conditioning(void)
@@ -392,8 +364,7 @@ int stcc4_read_all(float *temperature, float *humidity, float *co2)
         RET_IF_ERR(stcc4_perform_periodic_conditioning(), "Failed to perform periodic conditioning");
 
         /* Perform single-shot measurement */
-        ret = stcc4_fetch_sample();
-        RET_IF_ERR(ret, "Failed to fetch sample");
+        RET_IF_ERR(stcc4_fetch_sample(), "Failed to fetch sample");
 
         /* Update measurement timestamp */
         last_measurement_ms = k_uptime_get();

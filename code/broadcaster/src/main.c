@@ -209,7 +209,7 @@ int main(void) {
 	INIT_OR_REBOOT(led_init(), "LED");
 
 	// Blink at 4 blinks per second while initializing remaining drivers
-	INIT_OR_REBOOT(led_init_blink_start(), "LED blink");
+	INIT_OR_REBOOT(led_blink_start(), "LED blink");
 
 	// Initialize the button driver
 	INIT_OR_REBOOT(button_init(), "button");
@@ -222,7 +222,9 @@ int main(void) {
 	// Initialize the BLE driver
 	INIT_OR_REBOOT(ble_init(&sleep_time), "BLE");
 
-	INIT_OR_REBOOT(led_init_blink_stop(), "LED blink");
+	INIT_OR_REBOOT(led_blink_stop(), "LED blink");
+	LOG_IF_ERR(led1_on(), "Unable to turn on LED after initialization");
+	k_sleep(K_SECONDS(1));
 	LOG_IF_ERR(led1_off(), "Unable to turn off LED after initialization");
 
 	LOG_INF("All drivers initialized");

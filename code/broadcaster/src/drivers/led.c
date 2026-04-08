@@ -20,7 +20,7 @@ static bool led1_state = false;
 static struct k_timer led1_blink_timer;
 static bool led1_blink_active = false;
 
-#define LED_INIT_BLINK_HALF_PERIOD_MS 125U
+#define LED_INIT_BLINK_HALF_PERIOD_MS 250U
 
 static void led1_blink_timer_handler(struct k_timer *timer_id) {
     ARG_UNUSED(timer_id);
@@ -77,7 +77,7 @@ int led1_toggle(void) {
     return led1_set_state(!led1_state);
 }
 
-int led_init_blink_start(void) {
+int led_blink_start(void) {
     if(!is_init) {
         LOG_ERR("Led driver is not initialized");
         return -1;
@@ -89,7 +89,7 @@ int led_init_blink_start(void) {
     return 0;
 }
 
-int led_init_blink_stop(void) {
+int led_blink_stop(void) {
     if (led1_blink_active) {
         k_timer_stop(&led1_blink_timer);
         led1_blink_active = false;
