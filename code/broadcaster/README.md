@@ -33,6 +33,12 @@ Note : If the board is giving out an error when flashing try these steps :
 
 To reset persisted settings (`sleep time`, `device name`, `device MAC`, `device node ID`) and re-apply values from `prj.conf`, you must use **erase and flash** (a normal flash keeps existing settings in NVS).
 
+### Startup initialization behavior
+
+When the broadcaster boots, the LED blinks while the remaining drivers are initialized. Once initialization completes, the LED is turned off.
+
+If one of the startup initializations fails, the firmware logs the error, turns the LED on solid for 5 seconds, and then reboots the board.
+
 #### J-Link setup
 
 ![J-Link setup](/doc/img/J-Link-Pin.png)

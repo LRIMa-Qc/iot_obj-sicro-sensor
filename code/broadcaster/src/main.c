@@ -23,6 +23,7 @@
 #include "utils/app_settings.h"
 
 #define WEEK_IN_MILLISECONDS (7 * 24 * 60 * 60 * 1000)
+#define INIT_REBOOT_DELAY_SECONDS 5
 
 LOG_MODULE_REGISTER(MAIN, CONFIG_MAIN_LOG_LEVEL);
 
@@ -44,12 +45,28 @@ bool first_run = true;
 static uint16_t sleep_time = CONFIG_SENSOR_SLEEP_DURATION_SEC;
 static uint64_t initial_timestamp = 0;
 
+#define INIT_OR_REBOOT(_init_call, _name)                  \
+	do {                                                     \
+		int _err = (_init_call);                              \
+		if (_err) {                                            \
+			init_fail_and_reboot((_name), _err);                \
+		}                                                      \
+	} while (0)
+
 //Pointer to the current i2c temperature and humidity sensor
 static int (*ptr_temp_hum_read)(float *, float *);
 // Pointer to optional co2 sensor read function
 static int (*ptr_co2_read)(float *);
 // Pointer to combined temperature, humidity and co2 sensor read function
 static int (*ptr_temp_hum_co2_read)(float *, float *, float *);
+
+static void init_fail_and_reboot(const char *name, int err) {
+	LOG_ERR("Unable to initialize %s (err: %d)", name, err);
+	(void)led_blink_stop();
+	(void)led1_on();
+	k_sleep(K_SECONDS(INIT_REBOOT_DELAY_SECONDS));
+	sys_reboot(SYS_REBOOT_COLD);
+}
 
 static void check_and_reboot_if_week_elapsed(void) {
     uint64_t current_timestamp = k_uptime_get();
@@ -189,17 +206,24 @@ int main(void) {
 	initial_timestamp = k_uptime_get();
 
 	// Initialize the LED driver
-	LOG_IF_ERR(led_init(), "Unable to initialize LED");
+	INIT_OR_REBOOT(led_init(), "LED");
+
+	// Blink at 4 blinks per second while initializing remaining drivers
+	INIT_OR_REBOOT(led_init_blink_start(), "LED blink");
+
 	// Initialize the button driver
-	LOG_IF_ERR(button_init(), "Unable to initialize button");
+	INIT_OR_REBOOT(button_init(), "button");
 	// Initialize the ADC driver
-	LOG_IF_ERR(adc_init(), "Unable to initialize ADC");
+	INIT_OR_REBOOT(adc_init(), "ADC");
 	// Initialize the AHT20 driver
-	LOG_IF_ERR(init_temp_hum_sensor(), "Unable to initialize temperature and humidity sensor");
+	INIT_OR_REBOOT(init_temp_hum_sensor(), "temperature and humidity sensor");
 	// Load and seed persisted app settings (sleep time, name, MAC)
-	LOG_IF_ERR(app_settings_init(&sleep_time), "Unable to initialize app settings");
+	INIT_OR_REBOOT(app_settings_init(&sleep_time), "app settings");
 	// Initialize the BLE driver
-	LOG_IF_ERR(ble_init(&sleep_time), "Unable to initialize BLE");
+	INIT_OR_REBOOT(ble_init(&sleep_time), "BLE");
+
+	INIT_OR_REBOOT(led_init_blink_stop(), "LED blink");
+	LOG_IF_ERR(led1_off(), "Unable to turn off LED after initialization");
 
 	LOG_INF("All drivers initialized");
 
