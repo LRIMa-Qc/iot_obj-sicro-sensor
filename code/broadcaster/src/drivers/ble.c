@@ -28,6 +28,7 @@ static atomic_t g_abort_ble_activity;
 
 static bt_addr_le_t g_gateway_addr;
 static bool g_has_gateway_addr;
+static uint16_t g_device_node_id;
 
 static uint8_t service_data[PAYLOAD_SIZE];
 static bt_addr_le_t addr;
@@ -94,7 +95,7 @@ static bool parse_downlink_payload(const uint8_t *data, uint8_t len, uint32_t *s
 	}
 
 	uint16_t target_node_id = sys_get_le16(&data[2]);
-	if (target_node_id != CONFIG_BLE_NODE_ID) {
+	if (target_node_id != g_device_node_id) {
 		return false;
 	}
 
@@ -317,6 +318,7 @@ int ble_init(uint16_t *sleep_time_ptr)
 	k_timer_init(&advertising_timer, ble_adv_timer_handler, NULL);
 	g_sleep_time_ptr = sleep_time_ptr;
 	g_has_pending_sleep_update = false;
+	g_device_node_id = (uint16_t)app_settings_get_device_node_id();
 	atomic_set(&g_abort_ble_activity, 0);
 
 	const char *device_mac = app_settings_get_device_mac();
@@ -324,10 +326,12 @@ int ble_init(uint16_t *sleep_time_ptr)
 	RET_IF_ERR(bt_addr_le_from_str(device_mac, "random", &addr),
 		   "Unable to convert MAC address");
 	int id = bt_id_create(&addr, NULL);
-	if (id != 0) {
-		LOG_ERR("Unable to set MAC address");
+	if (id < 0) {
+		LOG_ERR("Unable to set MAC address (err %d)", id);
 		return id;
 	}
+	LOG_INF("Using device node ID: %u", g_device_node_id);
+	LOG_INF("Created BLE identity index: %d", id);
 
 	if (strlen(CONFIG_BLE_GATEWAY_MAC_ADDR) > 0U) {
 		int gateway_err = bt_addr_le_from_str(CONFIG_BLE_GATEWAY_MAC_ADDR, "random",
@@ -366,8 +370,8 @@ int ble_encode_adv_data(sensors_data_t *sensors_data, uint8_t present_mask,
 
 	service_data[0] = (uint8_t)(PAYLOAD_COMPANY_ID & 0xFFU);
 	service_data[1] = (uint8_t)((PAYLOAD_COMPANY_ID >> 8) & 0xFFU);
-	service_data[2] = (uint8_t)(CONFIG_BLE_NODE_ID & 0xFFU);
-	service_data[3] = (uint8_t)((CONFIG_BLE_NODE_ID >> 8) & 0xFFU);
+	service_data[2] = (uint8_t)(g_device_node_id & 0xFFU);
+	service_data[3] = (uint8_t)((g_device_node_id >> 8) & 0xFFU);
 	service_data[4] = (uint8_t)(counter & 0xFFU);
 
 	int err = payload_encode(sensors_data, service_data, sizeof(service_data), present_mask,
