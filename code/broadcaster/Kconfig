@@ -68,9 +68,9 @@ config BLE_USER_DEFINED_NAME
 config BLE_NODE_ID
 	int "Static node identifier used in advertisements"
 	default 1
-	range 1 65535
+	range 1 255
 	help
-		Unique node identifier flashed into the device and advertised in every uplink packet.
+		Unique 8-bit node identifier flashed into the device and advertised in every uplink packet.
 
 ################################################################################
 # Main module
