@@ -6,7 +6,7 @@ source "Kconfig.zephyr"
 ################################################################################
 
 config SENSOR_SLEEP_DURATION_SEC
-	int "Sleep duration in seconds bettwen two measurements"
+	int "Sleep duration in seconds between two measurements"
     default 60
 
 config SENSOR_SLEEP_MODIFICATION_ENABLED

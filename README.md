@@ -150,5 +150,5 @@ The central application handles BLE scanning, data collection, and integration w
 
 5. Power on the broadcaster devices
 
-The application will automatically scan for and connect to broadcaster devices, collecting sensor data and synchronizing with ALIVEcode.
+The application will automatically scan for broadcaster devices, collecting sensor data and synchronizing with ALIVEcode.
 It publishes each node under `/doc/<device_index>` including `/doc/<device_index>/sleep_duration_sec`, and uses `/doc/sleep_time` as the desired target for downlink sleep updates.
