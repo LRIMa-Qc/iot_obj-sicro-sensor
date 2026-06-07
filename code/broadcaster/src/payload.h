@@ -51,7 +51,7 @@
  * - Bytes 26-28: Reserved, set to 0x00
  *
  * @param data Pointer to sensor data structure
- * @param buf Output buffer (must be at least 25 bytes)
+ * @param buf Output buffer (must be at least 29 bytes)
  * @param buf_len Length of output buffer
  * @param present_mask Bitmap describing which sensor fields are valid
  * @return 0 on success, negative error code on failure
