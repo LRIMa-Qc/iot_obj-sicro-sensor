@@ -2,8 +2,8 @@
 
 WORKSPACE_PATH=/opt/LRIMa
 FILENAME=iot_obj-sicro-sensor
-STANDARD_LOGS=/var/log/LIRMa/standard.log
-ERROR_LOGS=/var/log/LIRMa/error.log
+STANDARD_LOGS=/var/log/LRIMa/standard.log
+ERROR_LOGS=/var/log/LRIMa/error.log
 CONTROLLER_NAME="centrale"
 
 sudo mkdir -p /var/log/LIRMa
