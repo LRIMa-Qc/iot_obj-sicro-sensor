@@ -6,7 +6,7 @@ STANDARD_LOGS=/var/log/LRIMa/standard.log
 ERROR_LOGS=/var/log/LRIMa/error.log
 CONTROLLER_NAME="centrale"
 
-sudo mkdir -p /var/log/LIRMa
+sudo mkdir -p /var/log/LRIMa
 
 sudo apt-get install bluez bluetooth python3 bluez-tools python3-pip python3-venv git -q -y
 sudo systemctl daemon-reexec
@@ -27,8 +27,6 @@ if [[ ! -d "$WORKSPACE_PATH/$FILENAME/.git" ]]; then
 	git clone https://github.com/LRIMa-Qc/iot_obj-sicro-sensor.git "$WORKSPACE_PATH/$FILENAME"
 fi
 cd "$WORKSPACE_PATH/$FILENAME/code/central"
-#TEMPORAIRE: attendre que main soit update
-git switch dev/new-broadcast
 
 python3 -m venv venv
 if [[ $IS_RASP_VERSION_5 == true ]]; then
@@ -50,7 +48,6 @@ User=lrima
 Group=lrima
 WorkingDirectory=$WORKSPACE_PATH/$FILENAME/code/central
 ExecStart=$WORKSPACE_PATH/$FILENAME/code/central/venv/bin/python -u main.py
-Restart=always
 Restart=on-failure
 RestartSec=60
 StandardOutput=append:$STANDARD_LOGS
