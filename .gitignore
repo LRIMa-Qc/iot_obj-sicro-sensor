@@ -24,3 +24,5 @@ code/central/config.ini
 code/central/data.csv
 
 code/central/config.ini.test
+code/central/core/__pycache__/
+_pycache__/

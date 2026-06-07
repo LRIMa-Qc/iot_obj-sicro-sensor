@@ -33,6 +33,10 @@
 #define STCC4_CMD_EXIT_SLEEP 5U
 #define STCC4_CMD_SELF_TEST 6U
 #define STCC4_CMD_GET_PRODUCT_ID 7U
+#define STCC4_CMD_CONDITIONING 8U
+
+#define STCC4_IDLE_TIMEOUT_MS (3U * 60U * 60U * 1000U) /* 3 hours */
+#define STCC4_CONDITIONING_DURATION_MS 22000U          /* 22 seconds */
 
 #define STCC4_MAX_TEMP 175
 #define STCC4_MIN_TEMP (-45)
@@ -56,5 +60,7 @@ int stcc4_init(void);
 int stcc4_read(float *temperature, float *humidity);
 
 int stcc4_read_co2(float *co2);
+
+int stcc4_read_all(float *temperature, float *humidity, float *co2);
 
 #endif /* STCC4_H_ */

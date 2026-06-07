@@ -24,7 +24,7 @@ def handle_change_sleep(data):
 
 def send_data(device: Device):
     sensors_values = decoder.decode(device.data)
-    print(decoder.format_console_line(str(device.index), sensors_values))
+    print(decoder.format_console_line(str(device.index), sensors_values, device.sleep_duration_sec))
     sync_manager.sync_device(device, sensors_values)
 
 

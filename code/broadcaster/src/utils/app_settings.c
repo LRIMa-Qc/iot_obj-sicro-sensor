@@ -20,20 +20,24 @@ LOG_MODULE_REGISTER(APP_SETTINGS, CONFIG_APP_SETTINGS_LOG_LEVEL);
 #define APP_SETTINGS_KEY_SLEEP_TIME "sleep_time"
 #define APP_SETTINGS_KEY_DEVICE_NAME "device_name"
 #define APP_SETTINGS_KEY_DEVICE_MAC "device_mac"
+#define APP_SETTINGS_KEY_DEVICE_NODE_ID "device_node_id"
 
 #define APP_SETTINGS_PATH_SLEEP_TIME APP_SETTINGS_SUBTREE "/" APP_SETTINGS_KEY_SLEEP_TIME
 #define APP_SETTINGS_PATH_DEVICE_NAME APP_SETTINGS_SUBTREE "/" APP_SETTINGS_KEY_DEVICE_NAME
 #define APP_SETTINGS_PATH_DEVICE_MAC APP_SETTINGS_SUBTREE "/" APP_SETTINGS_KEY_DEVICE_MAC
+#define APP_SETTINGS_PATH_DEVICE_NODE_ID APP_SETTINGS_SUBTREE "/" APP_SETTINGS_KEY_DEVICE_NODE_ID
 
 static uint16_t *g_sleep_time_ptr;
 static uint16_t g_persisted_sleep_time;
 
 static char g_device_name[sizeof(CONFIG_BLE_USER_DEFINED_NAME)];
 static char g_device_mac[sizeof(CONFIG_BLE_USER_DEFINED_MAC_ADDR)];
+static uint8_t g_device_node_id = CONFIG_BLE_NODE_ID;
 
 static bool g_has_persisted_sleep_time;
 static bool g_has_persisted_device_name;
 static bool g_has_persisted_device_mac;
+static bool g_has_persisted_device_node_id;
 static bool g_initialized;
 
 static uint16_t clamp_sleep_time_value(uint16_t value)
@@ -132,6 +136,31 @@ static int app_settings_set(const char *name, size_t len_rd,
 		return rc;
 	}
 
+	if (strcmp(name, APP_SETTINGS_KEY_DEVICE_NODE_ID) == 0) {
+		uint8_t loaded_value;
+		if (len_rd != sizeof(loaded_value)) {
+			LOG_WRN("Invalid stored device_node_id size: %u", (unsigned int)len_rd);
+			return -EINVAL;
+		}
+
+		int rc = read_cb(cb_arg, &loaded_value, sizeof(loaded_value));
+		if (rc < 0) {
+			LOG_ERR("Unable to read stored device_node_id (%d)", rc);
+			return rc;
+		}
+
+		if ((size_t)rc != sizeof(loaded_value)) {
+			LOG_WRN("Stored device_node_id size mismatch: read %d of %u", rc,
+				(unsigned int)sizeof(loaded_value));
+			return -EINVAL;
+		}
+
+		g_device_node_id = loaded_value;
+		g_has_persisted_device_node_id = true;
+		LOG_INF("Loaded persisted device_node_id: %u", g_device_node_id);
+		return 0;
+	}
+
 	return -ENOENT;
 }
 
@@ -164,6 +193,15 @@ static int persist_missing_defaults(void)
 				     strlen(g_device_mac) + 1U),
 			   "Unable to save default device_mac setting");
 		LOG_INF("Persisted default device_mac: %s", g_device_mac);
+	}
+
+	if (!g_has_persisted_device_node_id) {
+		LOG_WRN("No persisted device_node_id found, using Kconfig default: %u", 
+			g_device_node_id);
+		RET_IF_ERR(settings_save_one(APP_SETTINGS_PATH_DEVICE_NODE_ID, &g_device_node_id,
+				     sizeof(g_device_node_id)),
+			   "Unable to save default device_node_id setting");
+		LOG_INF("Persisted default device_node_id: %u", g_device_node_id);
 	}
 
 	return 0;
@@ -235,4 +273,9 @@ const char *app_settings_get_device_name(void)
 const char *app_settings_get_device_mac(void)
 {
 	return g_device_mac;
+}
+
+uint8_t app_settings_get_device_node_id(void)
+{
+	return g_device_node_id;
 }

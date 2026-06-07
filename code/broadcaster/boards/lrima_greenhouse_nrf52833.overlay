@@ -137,7 +137,7 @@
     stcc4: stcc4@64 {
         compatible = "sensirion,stcc4";
         reg = <0x64>;
-        measurement-mode = <0>;
+        measurement-mode = <1>;
         label = "STCC4";
     };
 };
