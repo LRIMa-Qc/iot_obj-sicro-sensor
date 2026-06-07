@@ -1,6 +1,6 @@
-
 aliot-py>=1.0.0
 pyserial>=3.5
 bleak>=3.0.1
 dbus-next>=0.2.3
-opencv-python==3.4.13.47
+opencv-python-headless>=4.10.0
+# opencv-python==3.4.13.47 # NOTE: Ne fonctionne pas
