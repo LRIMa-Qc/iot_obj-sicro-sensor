@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 WORKSPACE_PATH=/opt/LRIMa
 FILENAME=iot_obj-sicro-sensor
 STANDARD_LOGS=/var/log/LRIMa/standard.log
 ERROR_LOGS=/var/log/LRIMa/error.log
 CONTROLLER_NAME="centrale"
 
+sudo useradd --system --no-create-home lrima 2>/dev/null || true
 sudo mkdir -p /var/log/LRIMa
 
 sudo apt-get install bluez bluetooth python3 bluez-tools python3-pip python3-venv git -q -y
