@@ -35,7 +35,7 @@ LOG_MODULE_REGISTER(MAIN, CONFIG_MAIN_LOG_LEVEL);
 //==================================================================================================
 // Bluetooth defines
 #define COMPANY_ID_LE 0x0059
-#define PAYLOAD_SIZE 25
+#define PAYLOAD_SIZE 29
 #define BIT_TEMP 0x01
 #define BIT_HUM 0x02
 #define BIT_LUM 0x04
@@ -137,9 +137,10 @@ int convertToMyrio(uint8_t *array, size_t length, char *result, size_t resultSiz
 	}
 
 	uint8_t currentIndex = startIndex;
+	uint8_t currentIndex = startIndex;
 	uint16_t nodeId = (uint16_t)array[2] | ((uint16_t)array[3] << 8);
 	uint8_t sequence = array[4];
-	uint8_t presentMask = array[21];
+	uint8_t presentMask = array[25];
 
 	int bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "I=%02uP=%u", nodeId, sequence);
 	if (bytesWritten < 0 || bytesWritten >= resultSize - currentIndex) {
@@ -148,7 +149,7 @@ int convertToMyrio(uint8_t *array, size_t length, char *result, size_t resultSiz
 	currentIndex += bytesWritten;
 
 	if (presentMask & BIT_TEMP) {
-		int16_t temp = (int16_t)((uint16_t)array[5] | ((uint16_t)array[6] << 8));
+		int16_t temp = (int16_t)((uint16_t)array[9] | ((uint16_t)array[10] << 8));
 		bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "T=%d.%02d",
 				temp / 100, abs(temp % 100));
 		if (bytesWritten < 0 || bytesWritten >= resultSize - currentIndex) {
@@ -158,7 +159,7 @@ int convertToMyrio(uint8_t *array, size_t length, char *result, size_t resultSiz
 	}
 
 	if (presentMask & BIT_HUM) {
-		uint16_t hum = (uint16_t)array[7] | ((uint16_t)array[8] << 8);
+		uint16_t hum = (uint16_t)array[11] | ((uint16_t)array[12] << 8);
 		bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "H=%u.%02u",
 				hum / 100, hum % 100);
 		if (bytesWritten < 0 || bytesWritten >= resultSize - currentIndex) {
@@ -168,9 +169,10 @@ int convertToMyrio(uint8_t *array, size_t length, char *result, size_t resultSiz
 	}
 
 	if (presentMask & BIT_LUM) {
-		uint32_t lum = (uint32_t)array[9] | ((uint32_t)array[10] << 8) |
-			      ((uint32_t)array[11] << 16) | ((uint32_t)array[12] << 24);
+		uint32_t lum = (uint32_t)array[13] | ((uint32_t)array[14] << 8) |
+			      ((uint32_t)array[15] << 16) | ((uint32_t)array[16] << 24);
 		bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "L=%lu",
+				(unsigned long)lum);
 				(unsigned long)lum);
 		if (bytesWritten < 0 || bytesWritten >= resultSize - currentIndex) {
 			return 1;
@@ -179,16 +181,18 @@ int convertToMyrio(uint8_t *array, size_t length, char *result, size_t resultSiz
 	}
 
 	if (presentMask & BIT_CO2) {
-		uint16_t co2 = (uint16_t)array[13] | ((uint16_t)array[14] << 8);
+		uint16_t co2 = (uint16_t)array[17] | ((uint16_t)array[18] << 8);
 		bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "C=%u", co2);
 		if (bytesWritten < 0 || bytesWritten >= resultSize - currentIndex) {
+			return 1;
+		}
 			return 1;
 		}
 		currentIndex += bytesWritten;
 	}
 
 	if (presentMask & BIT_GND_TEMP) {
-		int16_t gtemp = (int16_t)((uint16_t)array[15] | ((uint16_t)array[16] << 8));
+		int16_t gtemp = (int16_t)((uint16_t)array[19] | ((uint16_t)array[20] << 8));
 		bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "S=%d.%02d",
 				gtemp / 100, abs(gtemp % 100));
 		if (bytesWritten < 0 || bytesWritten >= resultSize - currentIndex) {
@@ -198,7 +202,7 @@ int convertToMyrio(uint8_t *array, size_t length, char *result, size_t resultSiz
 	}
 
 	if (presentMask & BIT_GND_HUM) {
-		uint16_t ghum = (uint16_t)array[17] | ((uint16_t)array[18] << 8);
+		uint16_t ghum = (uint16_t)array[21] | ((uint16_t)array[22] << 8);
 		bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "V=%u.%02u",
 				ghum / 100, ghum % 100);
 		if (bytesWritten < 0 || bytesWritten >= resultSize - currentIndex) {
@@ -208,7 +212,7 @@ int convertToMyrio(uint8_t *array, size_t length, char *result, size_t resultSiz
 	}
 
 	if (presentMask & BIT_BAT) {
-		uint16_t bat = (uint16_t)array[19] | ((uint16_t)array[20] << 8);
+		uint16_t bat = (uint16_t)array[23] | ((uint16_t)array[24] << 8);
 		bytesWritten = snprintf(result + currentIndex, resultSize - currentIndex, "B=%u.%02u",
 				bat / 100, bat % 100);
 		if (bytesWritten < 0 || bytesWritten >= resultSize - currentIndex) {
