@@ -48,10 +48,13 @@ class AliotSyncManager:
 
     def sync_device(self, device: Any, sensors_values: Mapping[int, float]) -> None:
         if self.sensor_iot.connected_to_alivecode:
-
             led_control = LedControl()
             led_control._set_manual_led_mode()
+
+            led_control._led_on() # On before receiving data
+            time.sleep(0.2)
             led_control._led_off() # On before receiving data
+            
             del led_control
             
             doc_json = self.decoder.build_doc_payload(

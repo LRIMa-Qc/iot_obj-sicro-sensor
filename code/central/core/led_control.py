@@ -16,7 +16,7 @@ class LedControl:
   def _led_on(self):
     try:
       with open(f"{self.LED_PATH}/brightness", "w") as f:
-        f.write("1")
+        f.write("255")
     except Exception as e:
       print(f"LED ON failed: {e}")
 
