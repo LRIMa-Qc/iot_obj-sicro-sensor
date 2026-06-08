@@ -1,0 +1,20 @@
+[Unit]
+Description=Camera Startup Script - restart on crash
+After=network-online.target multi-user.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/home/lrima/iot_obj-sicro-sensor/code/central/camera-2/startup.sh
+Restart=on-failure
+RestartSec=10
+StartLimitBurst=20
+StartLimitIntervalSec=600
+# Optional: run as specific user/group
+User=lrima
+Group=lrima
+# Optional: environment file
+# EnvironmentFile=/etc/default/my-script
+
+[Install]
+WantedBy=multi-user.target
