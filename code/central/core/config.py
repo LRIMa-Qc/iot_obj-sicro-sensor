@@ -5,6 +5,14 @@ DEFAULT_SLEEP_TIME = 30
 LAST_RECEIVED_TIME_FILE = "last_received_time.txt"
 OFFLINE_CSV_FILE = "data.csv"
 
+ERROR_LED_SEQUENCES = {
+    "bluetooth_adapter_not_found": [2, 2, 2],
+    "bluetooth_scan_failed": [0.5, 0.5, 0.5, 0.5],
+    "disconnect_backend": [1, 1, 1],
+    "inactivity_watchdog": [3, 3, 3, 3],
+    "resource_not_ready": [0.2, 0.2, 0.2, 0.2, 0.2],
+}
+
 SENSOR_DEFAULTS = {
     1: -99,  # temp
     2: 0,  # hum
