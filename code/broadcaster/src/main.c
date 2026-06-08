@@ -258,9 +258,7 @@ int main(void) {
 		int sem_result = k_sem_take(button_get_pressed_sem(), K_SECONDS(sleep_time));
 		if (sem_result == 0) {
 			LOG_INF("Button pressed, waking up");
-			if (ble_get_state() == BLE_STATE_ADVERTISING) {
-				led1_on();
-			}
+			blink_led_for_seconds(CONFIG_BLE_ADV_DURATION_SEC);
 		}
 	}
 
