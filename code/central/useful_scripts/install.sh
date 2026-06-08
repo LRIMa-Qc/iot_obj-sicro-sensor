@@ -87,6 +87,8 @@ ControllerMode = dual
 #DisabledPlugins = network
 EOF
 
+chmod +x pi_setup.sh
+./pi_setup.sh
 
 sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
