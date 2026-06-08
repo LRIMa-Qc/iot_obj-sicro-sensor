@@ -71,4 +71,12 @@ int led_blink_start(void);
  */
 int led_blink_stop(void);
 
+/**
+ * @brief Blink LED1 for a specified number of seconds
+ * 
+ * @param seconds The number of seconds to blink the LED
+ * @return int 0 if success, -1 if error
+ */
+int blink_led_for_seconds(uint32_t seconds);
+
 #endif /* LED_H */
