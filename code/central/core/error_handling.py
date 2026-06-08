@@ -1,7 +1,7 @@
 import sys
 import subprocess
 import time
-from led_control import LedControl
+from core.led_control import LedControl
 
 class ErrorHandler:
   """Base class for all exceptions raised by the central core."""
