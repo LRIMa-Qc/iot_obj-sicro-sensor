@@ -9,7 +9,8 @@ from collections.abc import Callable
 from typing import Any
 
 from core.storage import LastReceivedTimeStore
-
+from core.error_handling import ErrorHandler
+from core.config import ERROR_LED_SEQUENCES
 
 class InactivityWatchdog:
     """Restart services if no data was received for too long."""
@@ -25,6 +26,7 @@ class InactivityWatchdog:
         self.timestamp_store = timestamp_store
         self.reboot_after_inactive = reboot_after_inactive
         self.on_connected_start = on_connected_start
+        self._error_handler = ErrorHandler()
 
     def run(self) -> None:
         if self.sensor_iot.connected_to_alivecode and self.on_connected_start is not None:
@@ -37,10 +39,9 @@ class InactivityWatchdog:
             print(time.time() - last_received_time)
 
             if (time.time() - last_received_time) > self.reboot_after_inactive:
-                print("Restarting bluetooth service, no data received for " f"{self.reboot_after_inactive} seconds")
-                self._run_restart_command(["sudo", "systemctl", "restart", "bluetooth"])
-                self._run_restart_command(["pm2", "restart", "all"])
-                sys.exit()
+                self._error_handler.log_and_restart_service(
+                    f"Restarting bluetooth service, no data received for {self.reboot_after_inactive} seconds", ERROR_LED_SEQUENCES["inactivity_watchdog"]
+                )
 
             time.sleep(60)
 

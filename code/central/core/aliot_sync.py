@@ -9,6 +9,7 @@ from typing import Any
 from core.config import DEFAULT_SLEEP_TIME, YELLOW
 from core.payload import SensorPayloadDecoder
 from core.storage import OfflineCsvBuffer
+from core.led_control import LedControl
 
 
 class AliotSyncManager:
@@ -47,6 +48,15 @@ class AliotSyncManager:
 
     def sync_device(self, device: Any, sensors_values: Mapping[int, float]) -> None:
         if self.sensor_iot.connected_to_alivecode:
+            led_control = LedControl()
+            led_control._set_manual_led_mode()
+
+            led_control._led_on() # On before receiving data
+            time.sleep(0.2)
+            led_control._led_off() # On before receiving data
+            
+            del led_control
+            
             doc_json = self.decoder.build_doc_payload(
                 device.index,
                 device.id,

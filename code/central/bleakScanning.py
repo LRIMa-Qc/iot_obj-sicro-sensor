@@ -3,13 +3,14 @@ from threading import Thread
 from time import sleep, time
 from queue import Queue, Full, Empty
 import subprocess
-import os
 import sys
 from collections import OrderedDict
 from bleak import BleakScanner
 from bleak.exc import BleakError
 from device import Device
 from core.downlink_advertiser import BluezDownlinkAdvertiser
+from core.error_handling import ErrorHandler
+from core.config import ERROR_LED_SEQUENCES
 
 # --- Constants ---
 DEFAULT_SLEEP_TIME = 0.005
@@ -45,10 +46,11 @@ class BleakScanning:
         self._last_received_time_write = 0.0
         self.new_sleep_value = None
         self.scanning = False
+        self._error_handler = ErrorHandler()
 
         self.__adapter = adapter or self.get_usb_bluetooth_adapters()
         if not self.__adapter:
-            raise ValueError("No USB Bluetooth adapter found.")
+            self._error_handler.log_and_restart_service("No USB Bluetooth adapter found.", ERROR_LED_SEQUENCES["bluetooth_adapter_not_found"])
         print(f"Using adapter: {self.__adapter}")
 
         self.__input_buffer_parser_thread = Thread(target=self.__input_buffer_parser, daemon=True)
@@ -183,11 +185,8 @@ class BleakScanning:
                         await asyncio.sleep(self.__sleep_time)
                 await scanner.stop()
             except (BleakError, asyncio.TimeoutError) as e:
-                print(f"[Scan Error] {e}")
                 self.scanning = False
-                self._run_restart_command(["sudo", "systemctl", "restart", "bluetooth"])
-                self._run_restart_command(["pm2", "restart", "all"])
-                sys.exit()  # quit
+                self._error_handler.log_and_restart_service(f"[Scan Error] {e}", ERROR_LED_SEQUENCES["bluetooth_scan_failed"])
             finally:
                 self.scanning = False
                 await asyncio.sleep(0.1)  # Small delay to ensure scanner stops properly
@@ -293,12 +292,6 @@ class BleakScanning:
         with open(LAST_RECEIVED_TIME_FILE, "w", encoding="utf-8") as f:
             f.truncate(0)
             f.write(f"{now}")
-
-    def _run_restart_command(self, command):
-        try:
-            subprocess.run(command, check=True, timeout=10)
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-            print(f"[Restart Command Failed] {command}: {exc}")
 
     def detection_callback(self, device, advertisement_data):
         if device.address == INVALID_BLUETOOTH_ADDRESS:
