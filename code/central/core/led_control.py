@@ -7,7 +7,9 @@ class LedControl:
     def _set_manual_led_mode(self):
         try:
             subprocess.run(
-                f"echo none > {LedControl.LED_PATH}/trigger", shell=True, check=True
+                f"echo none | sudo tee {LedControl.LED_PATH}/trigger",
+                shell=True,
+                check=True,
             )
         except subprocess.CalledProcessError as _:
             try:
@@ -19,14 +21,18 @@ class LedControl:
 
     def _led_on(self):
         try:
-            with open(f"{self.LED_PATH}/brightness", "w") as f:
-                f.write("255")
+            subprocess.run(
+                f"echo 255 | sudo tee {LedControl.LED_PATH}/brightness",
+                shell=True,
+                check=True,
+            )
         except Exception as e:
             print(f"LED ON failed: {e}")
 
     def _led_off(self):
         try:
-            with open(f"{self.LED_PATH}/brightness", "w") as f:
-                f.write("0")
+            subprocess.run(
+                f"echo 0 | tee {LedControl.LED_PATH}/brightness", shell=True, check=True
+            )
         except Exception as e:
             print(f"LED OFF failed: {e}")
