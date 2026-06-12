@@ -30,7 +30,9 @@ LRIMA_NAME_PREFIX = "LRIMa"
 
 
 class BleakScanning:
-    def __init__(self, send_data_cb, send_logs_cb, log_all: bool, adapter: str = "") -> None:
+    def __init__(
+        self, send_data_cb, send_logs_cb, log_all: bool, adapter: str = ""
+    ) -> None:
         self.__send_data_cb = send_data_cb
         self.__send_logs_cb = send_logs_cb
         self.__log_all = log_all
@@ -51,7 +53,9 @@ class BleakScanning:
             raise ValueError("No USB Bluetooth adapter found.")
         print(f"Using adapter: {self.__adapter}")
 
-        self.__input_buffer_parser_thread = Thread(target=self.__input_buffer_parser, daemon=True)
+        self.__input_buffer_parser_thread = Thread(
+            target=self.__input_buffer_parser, daemon=True
+        )
         self.__input_buffer_parser_thread.start()
 
         self.write_lock = asyncio.Lock()
@@ -96,7 +100,9 @@ class BleakScanning:
 
     def get_usb_bluetooth_adapters(self):
         try:
-            result = subprocess.run(["hciconfig"], stdout=subprocess.PIPE, text=True, check=True)
+            result = subprocess.run(
+                ["hciconfig"], stdout=subprocess.PIPE, text=True, check=True
+            )
             output = result.stdout
 
             def parse_to_json(data):
@@ -177,7 +183,6 @@ class BleakScanning:
 
                     # Wait for write_queue not empty
                     while True:
-
                         if not self.write_queue.empty():
                             break
                         await asyncio.sleep(self.__sleep_time)
@@ -186,7 +191,9 @@ class BleakScanning:
                 print(f"[Scan Error] {e}")
                 self.scanning = False
                 self._run_restart_command(["sudo", "systemctl", "restart", "bluetooth"])
-                self._run_restart_command(["pm2", "restart", "all"])
+                self._run_restart_command(
+                    ["sudo", "systemctl", "restart", "LRIMa-central"]
+                )
                 sys.exit()  # quit
             finally:
                 self.scanning = False
@@ -199,7 +206,9 @@ class BleakScanning:
         while not self.write_queue.empty():
             device, value, node_id = await self.write_queue.get()
             await self._write_characteristic(device, value, node_id)
-            await asyncio.sleep(WRITE_DELAY_SECONDS)  # Small delay to avoid overwhelming the device
+            await asyncio.sleep(
+                WRITE_DELAY_SECONDS
+            )  # Small delay to avoid overwhelming the device
 
     async def _write_characteristic(self, device, value, node_id):
         async with self.write_lock:
@@ -209,7 +218,9 @@ class BleakScanning:
                 return
 
             if node_id < 0:
-                print(f"[Downlink Skipped] Invalid node id for {device.name} [{device.address}]")
+                print(
+                    f"[Downlink Skipped] Invalid node id for {device.name} [{device.address}]"
+                )
                 self.write_queue.task_done()
                 return
 
@@ -230,13 +241,17 @@ class BleakScanning:
     async def write_characteristics(self, device, value, node_id):
 
         # Prevent multiple writes queued for the same device
-        already_queued = any(d.address == device.address for d, _, _ in self.write_queue._queue)
+        already_queued = any(
+            d.address == device.address for d, _, _ in self.write_queue._queue
+        )
         if already_queued:
             print(f"[Write Already Queued] {device.name} [{device.address}]")
             return
 
         if self.write_queue.full():
-            print(f"[Write Queue Full] Skipping write for {device.name} [{device.address}]")
+            print(
+                f"[Write Queue Full] Skipping write for {device.name} [{device.address}]"
+            )
             return
 
         await self.write_queue.put((device, value, node_id))
@@ -280,13 +295,17 @@ class BleakScanning:
 
     def _prune_write_tracking(self, now):
         stale_addresses = [
-            address for address, ts in self.last_write_time.items() if now - ts > WRITE_TRACK_TTL_SECONDS
+            address
+            for address, ts in self.last_write_time.items()
+            if now - ts > WRITE_TRACK_TTL_SECONDS
         ]
         for address in stale_addresses:
             self.last_write_time.pop(address, None)
 
     def _write_last_received_timestamp(self, now):
-        if (now - self._last_received_time_write) < LAST_RECEIVED_TIME_WRITE_INTERVAL_SECONDS:
+        if (
+            now - self._last_received_time_write
+        ) < LAST_RECEIVED_TIME_WRITE_INTERVAL_SECONDS:
             return
 
         self._last_received_time_write = now
@@ -340,7 +359,9 @@ class BleakScanning:
             return
 
         target_value = int(self.new_sleep_value)
-        target_value = max(CHARACTERISTIC_VALUE_MIN, min(target_value, CHARACTERISTIC_VALUE_MAX))
+        target_value = max(
+            CHARACTERISTIC_VALUE_MIN, min(target_value, CHARACTERISTIC_VALUE_MAX)
+        )
 
         if parsed_device.sleep_duration_sec == target_value:
             return
@@ -374,6 +395,8 @@ class BleakScanning:
             for task in pending:
                 task.cancel()
             if pending:
-                loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                loop.run_until_complete(
+                    asyncio.gather(*pending, return_exceptions=True)
+                )
             loop.close()
             self._loop = None

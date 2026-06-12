@@ -27,7 +27,10 @@ class InactivityWatchdog:
         self.on_connected_start = on_connected_start
 
     def run(self) -> None:
-        if self.sensor_iot.connected_to_alivecode and self.on_connected_start is not None:
+        if (
+            self.sensor_iot.connected_to_alivecode
+            and self.on_connected_start is not None
+        ):
             self.on_connected_start()
 
         while True:
@@ -37,9 +40,14 @@ class InactivityWatchdog:
             print(time.time() - last_received_time)
 
             if (time.time() - last_received_time) > self.reboot_after_inactive:
-                print("Restarting bluetooth service, no data received for " f"{self.reboot_after_inactive} seconds")
+                print(
+                    "Restarting bluetooth service, no data received for "
+                    f"{self.reboot_after_inactive} seconds"
+                )
                 self._run_restart_command(["sudo", "systemctl", "restart", "bluetooth"])
-                self._run_restart_command(["pm2", "restart", "all"])
+                self._run_restart_command(
+                    ["sudo", "systemctl", "restart", "LRIMa-central"]
+                )
                 sys.exit()
 
             time.sleep(60)
