@@ -12,7 +12,7 @@ class LedControl:
         except PermissionError as _:
             try:
                 subprocess.run(
-                    f"sudo chgrp -R {LedControl.LED_PATH}", shell=True, check=True
+                    f"sudo chgrp sudo -R {LedControl.LED_PATH}", shell=True, check=True
                 )
                 subprocess.run(
                     f"sudo chmod 660 -R {LedControl.LED_PATH}", shell=True, check=True
