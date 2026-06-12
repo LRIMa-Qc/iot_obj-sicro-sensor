@@ -32,7 +32,9 @@ class LedControl:
     def _led_off(self):
         try:
             subprocess.run(
-                f"echo 0 | tee {LedControl.LED_PATH}/brightness", shell=True, check=True
+                f"echo 0 | sudo tee {LedControl.LED_PATH}/brightness",
+                shell=True,
+                check=True,
             )
         except Exception as e:
             print(f"LED OFF failed: {e}")
