@@ -2,7 +2,7 @@ import subprocess
 
 
 class LedControl:
-    LED_PATH = "/sys/class/leds/PWR"
+    LED_PATH = "/sys/devices/platform/leds/leds/PWR"
 
     def _set_manual_led_mode(self):
         try:
@@ -11,9 +11,6 @@ class LedControl:
             )
         except subprocess.CalledProcessError as _:
             try:
-                subprocess.run(
-                    f"sudo chgrp sudo -R {LedControl.LED_PATH}", shell=True, check=True
-                )
                 subprocess.run(
                     f"sudo chmod 606 -R {LedControl.LED_PATH}", shell=True, check=True
                 )
