@@ -9,7 +9,7 @@ class LedControl:
             subprocess.run(
                 f"echo none > {LedControl.LED_PATH}/trigger", shell=True, check=True
             )
-        except PermissionError as _:
+        except subprocess.CalledProcessError as _:
             try:
                 subprocess.run(
                     f"sudo chgrp sudo -R {LedControl.LED_PATH}", shell=True, check=True
@@ -19,8 +19,6 @@ class LedControl:
                 )
             except Exception as e:
                 print(f"Failed to set LED mode: {e}")
-        except Exception as e:
-            print(f"Failed to set LED mode: {e}")
 
     def _led_on(self):
         try:
