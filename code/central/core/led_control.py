@@ -15,7 +15,7 @@ class LedControl:
                     f"sudo chgrp sudo -R {LedControl.LED_PATH}", shell=True, check=True
                 )
                 subprocess.run(
-                    f"sudo chmod 660 -R {LedControl.LED_PATH}", shell=True, check=True
+                    f"sudo chmod 606 -R {LedControl.LED_PATH}", shell=True, check=True
                 )
             except Exception as e:
                 print(f"Failed to set LED mode: {e}")
