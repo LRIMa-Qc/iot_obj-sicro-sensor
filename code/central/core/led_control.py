@@ -7,7 +7,7 @@ class LedControl:
     def _set_manual_led_mode(self):
         try:
             subprocess.run(
-                f"echo none | sudo tee {LedControl.LED_PATH}/trigger",
+                f"echo none | sudo tee {LedControl.LED_PATH}/trigger > /dev/null",
                 shell=True,
                 check=True,
             )
@@ -22,7 +22,7 @@ class LedControl:
     def _led_on(self):
         try:
             subprocess.run(
-                f"echo 255 | sudo tee {LedControl.LED_PATH}/brightness",
+                f"echo 255 | sudo tee {LedControl.LED_PATH}/brightness > /dev/null",
                 shell=True,
                 check=True,
             )
@@ -32,7 +32,7 @@ class LedControl:
     def _led_off(self):
         try:
             subprocess.run(
-                f"echo 0 | sudo tee {LedControl.LED_PATH}/brightness",
+                f"echo 0 | sudo tee {LedControl.LED_PATH}/brightness > /dev/null",
                 shell=True,
                 check=True,
             )
