@@ -55,9 +55,26 @@ class AliotSyncManager:
             )
             self.sensor_iot.update_doc(doc_json)
 
-            if self.csv_buffer.clear_after_reconnect():
-                print("Reconnected to alivecode, cleared offline CSV buffer")
+            self.flush_offline_buffer()
             return
 
         print("Not connected to alivecode, saving to CSV")
-        self.csv_buffer.append(time.time(), device.index, sensors_values)
+        self.csv_buffer.append(time.time(), device.index, device.id, sensors_values)
+
+    def flush_offline_buffer(self) -> None:
+        rows = self.csv_buffer.read_rows()
+        if not rows:
+            return
+
+        print(f"Reconnected to alivecode, flushing {len(rows)} buffered offline reading(s)")
+
+        try:
+            for _timestamp, device_index, device_id, sensors_values in rows:
+                doc_json = self.decoder.build_doc_payload(device_index, device_id, sensors_values)
+                self.sensor_iot.update_doc(doc_json)
+        except Exception as exc:
+            print(f"Failed to flush offline buffer, will retry on next reconnect: {exc}")
+            return
+
+        if self.csv_buffer.clear():
+            print(f"Cleared offline CSV buffer after flushing {len(rows)} reading(s)")

@@ -51,35 +51,53 @@ class LastReceivedTimeStore:
 
 
 class OfflineCsvBuffer:
-    """Thread-safe offline CSV buffering with clear-on-reconnect semantics."""
+    """Thread-safe offline CSV buffering with read/clear support for reconnect flushing."""
 
     def __init__(self, path: str = OFFLINE_CSV_FILE) -> None:
         self.path = path
         self._lock = threading.Lock()
-        self._buffered_offline_data = False
-        self._csv_cleared_after_reconnect = True
 
-    def append(self, timestamp: float, device_index: str, sensors_values: Mapping[int, float]) -> None:
+    def append(self, timestamp: float, device_index: str, device_id: int, sensors_values: Mapping[int, float]) -> None:
         with self._lock:
             with open(self.path, "a", encoding="utf-8") as file:
-                row_values = [f"{timestamp}", device_index] + [
+                row_values = [f"{timestamp}", device_index, str(device_id)] + [
                     str(sensors_values[sensor]) for sensor in SENSOR_CSV_ORDER
                 ]
                 file.write(",".join(row_values) + "\n")
 
-        self._buffered_offline_data = True
-        self._csv_cleared_after_reconnect = False
+    def read_rows(self) -> list[tuple[float, str, int, dict[int, float]]]:
+        with self._lock:
+            try:
+                with open(self.path, "r", encoding="utf-8") as file:
+                    lines = file.readlines()
+            except OSError:
+                return []
 
-    def clear_after_reconnect(self) -> bool:
-        if not self._buffered_offline_data or self._csv_cleared_after_reconnect:
-            return False
+        expected_fields = 3 + len(SENSOR_CSV_ORDER)
+        rows: list[tuple[float, str, int, dict[int, float]]] = []
 
+        for line in lines:
+            fields = line.strip().split(",")
+            if len(fields) != expected_fields:
+                continue
+
+            try:
+                timestamp = float(fields[0])
+                device_index = fields[1]
+                device_id = int(fields[2])
+                sensors_values = {sensor: float(fields[3 + i]) for i, sensor in enumerate(SENSOR_CSV_ORDER)}
+            except ValueError:
+                continue
+
+            rows.append((timestamp, device_index, device_id, sensors_values))
+
+        return rows
+
+    def clear(self) -> bool:
         try:
             with self._lock:
                 with open(self.path, "w", encoding="utf-8") as file:
                     file.truncate(0)
-            self._buffered_offline_data = False
-            self._csv_cleared_after_reconnect = True
             return True
         except OSError as exc:
             print(f"Could not clear {self.path} after reconnect: {exc}")
