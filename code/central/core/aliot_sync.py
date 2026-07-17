@@ -6,7 +6,7 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from core.config import DEFAULT_SLEEP_TIME, YELLOW
+from core.config import ALIOT_FLUSH_INTERVAL_SEC, DEFAULT_SLEEP_TIME, YELLOW
 from core.payload import SensorPayloadDecoder
 from core.storage import OfflineCsvBuffer
 
@@ -69,7 +69,9 @@ class AliotSyncManager:
         print(f"Reconnected to alivecode, flushing {len(rows)} buffered offline reading(s)")
 
         try:
-            for _timestamp, device_index, device_id, sensors_values in rows:
+            for i, (_timestamp, device_index, device_id, sensors_values) in enumerate(rows):
+                if i > 0:
+                    time.sleep(ALIOT_FLUSH_INTERVAL_SEC)
                 doc_json = self.decoder.build_doc_payload(device_index, device_id, sensors_values)
                 self.sensor_iot.update_doc(doc_json)
         except Exception as exc:
