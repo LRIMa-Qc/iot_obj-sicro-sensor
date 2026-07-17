@@ -62,6 +62,12 @@ const char *WIFI_PREF_KEY_PASS = "password";
 String currentSsid;
 String currentPassword;
 
+// Set when a wifi_config action has updated currentSsid/currentPassword but
+// they haven't been confirmed working (i.e. persisted) yet. Persisting only
+// after a confirmed reconnect keeps bad credentials from ever overwriting a
+// known-good stored network on NVS.
+bool pendingWifiSave = false;
+
 // Convert string to a bool
 bool stringToBool(const char *str) { return std::strcmp(str, "true") == 0; }
 
@@ -184,7 +190,11 @@ bool callbackWifiConfig(const char *data) {
   currentSsid = doc["ssid"].as<String>();
   currentPassword = doc["password"].as<String>();
 
-  saveWifiCredentials(currentSsid, currentPassword);
+  // Don't persist yet: if these credentials are bad, setupWiFi() will time
+  // out and ESP.restart(), and we want the next boot to fall back to
+  // whatever is still saved (or SECRET.h), not retry this bad value forever.
+  // onReconnect() persists it once the new network is confirmed working.
+  pendingWifiSave = true;
 
   aliotObj.setupConfig(AUTH_TOKEN, OBJECT_ID, currentSsid.c_str(),
                        currentPassword.c_str());
@@ -221,6 +231,15 @@ void updateValveFromServer() {
 // Called when the wifi is connected again
 void onReconnect() {
   Serial.println("Reconnected to ALIVEcode");
+
+  // Only now that the current credentials have proven to work do we persist
+  // them, so a bad wifi_config update never overwrites a known-good NVS
+  // entry.
+  if (pendingWifiSave) {
+    saveWifiCredentials(currentSsid, currentPassword);
+    pendingWifiSave = false;
+  }
+
   updateValveFromServer();
 }
 
