@@ -1,14 +1,16 @@
-import time
 import threading
+import time
 from datetime import datetime
+
 from aliot.aliot_obj import AliotObj
-from device import Device
+
 from bleakScanning import BleakScanning
 from core.aliot_sync import AliotSyncManager
 from core.config import REBOOT_AFTER_INACTIVE_SECONDS
 from core.health import InactivityWatchdog
 from core.payload import SensorPayloadDecoder
 from core.storage import LastReceivedTimeStore, OfflineCsvBuffer
+from device import Device
 
 sensor_iot = AliotObj("central")
 decoder = SensorPayloadDecoder()
@@ -24,7 +26,11 @@ def handle_change_sleep(data):
 
 def send_data(device: Device):
     sensors_values = decoder.decode(device.data)
-    print(decoder.format_console_line(str(device.index), sensors_values, device.sleep_duration_sec))
+    print(
+        decoder.format_console_line(
+            str(device.index), sensors_values, device.sleep_duration_sec
+        )
+    )
     sync_manager.sync_device(device, sensors_values)
 
 
@@ -45,7 +51,7 @@ def start():
 
 if __name__ == "__main__":
     print("\n" * 5)
-    print(f'Starting the program at {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}')
+    print(f"Starting the program at {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
     time.sleep(2)
     print("Started")
 
@@ -58,6 +64,7 @@ if __name__ == "__main__":
     # Setup aliot
     sensor_iot.on_start(callback=start)
     sensor_iot.listen_doc(["/doc/sleep_time"], handle_change_sleep)
+
     # Start aliot
     aliot_thread = threading.Thread(target=sensor_iot.run, kwargs={"retry_time": 10})
     aliot_thread.start()

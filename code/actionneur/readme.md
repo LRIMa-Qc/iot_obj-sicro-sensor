@@ -94,6 +94,23 @@ void setup() {
    ![ActionID image](doc/actionID.png)
 4. Repeat 1-3 for each relay in the list
 
+### Updating the wifi credentials remotely
+
+The device exposes a `wifi_config` action that lets you push new wifi credentials from the ALIVEcode dashboard without re-flashing the device.
+
+1. Create an action component with `actionID` set to `wifi_config`.
+2. Configure the action's payload value to be a JSON string of the form:
+
+   ```json
+   { "ssid": "MyNetwork", "password": "MyPassword" }
+   ```
+
+3. When received, the device saves the new credentials to non-volatile storage (NVS) and switches to the new network. The `SSID`/`PASSWORD` values in `SECRET.h` are only used as a fallback on first boot, before any `wifi_config` action has ever been received; afterwards, the stored credentials always take precedence.
+
+> **Warning**: if the new credentials are invalid, the device will fail to connect, restart, and retry with the same (bad) saved credentials on every subsequent boot — there is currently no automatic fallback to the last-known-good network. Double check the SSID/password before sending this action.
+
+_Note: credential persistence relies on the ESP32 `Preferences` (NVS) API. On `esp8266`/`native` builds the `wifi_config` action is still registered and will switch networks for the current session, but nothing is persisted — the hardcoded `SECRET.h` credentials are used again on the next boot._
+
 ### Installing the libraries
 
 The project uses platformio to manage the libraries. You can install it from [here](https://platformio.org/install/ide?install=vscode).
@@ -102,7 +119,7 @@ After installing platformio, you need to install the libraries. You can do this 
 #### Libraries used
 
 - [ArduinoJson](https://arduinojson.org/)
-- [Aliot-C](https://github.com/ALIVEcode/aliot-c)
+- [Aliot-C](https://github.com/LRIMa-Qc/aliot-c)
 - [WiFiClientSecure](https://www.arduino.cc/en/Reference/WiFiClientSecure)
 - [ArduinoHttpClient](https://www.arduino.cc/reference/arduinohttpclient/)
 
