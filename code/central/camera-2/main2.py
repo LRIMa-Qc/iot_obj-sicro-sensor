@@ -1,4 +1,4 @@
-# Documentation: https://alivecode.ca/docs/aliot
+# Documentation: https://culture.lrima.ca/docs/aliot
 from aliot.aliot_obj import AliotObj
 from test import up, down, left, right, pic
 from io import BytesIO
