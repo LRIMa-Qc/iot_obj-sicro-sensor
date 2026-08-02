@@ -14,7 +14,12 @@ from core.storage import OfflineCsvBuffer
 class AliotSyncManager:
     """Route decoded sensor data to Aliot or offline CSV depending on connectivity."""
 
-    def __init__(self, sensor_iot: Any, decoder: SensorPayloadDecoder, csv_buffer: OfflineCsvBuffer) -> None:
+    def __init__(
+        self,
+        sensor_iot: Any,
+        decoder: SensorPayloadDecoder,
+        csv_buffer: OfflineCsvBuffer,
+    ) -> None:
         self.sensor_iot = sensor_iot
         self.decoder = decoder
         self.csv_buffer = csv_buffer
@@ -39,7 +44,10 @@ class AliotSyncManager:
         print(f"New sleep time: {scanner.new_sleep_value}")
 
     def send_logs(self, msg: str) -> None:
-        data = {"date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), "text": msg}
+        data = {
+            "date": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+            "text": msg,
+        }
         print(f"{YELLOW}LOG: {data['date']} - {data['text']}\033[0m")
 
         if self.sensor_iot.connected_to_alivecode:
@@ -58,7 +66,7 @@ class AliotSyncManager:
             self.flush_offline_buffer()
             return
 
-        print("Not connected to alivecode, saving to CSV")
+        print("Not connected to lrima culture, saving to CSV")
         self.csv_buffer.append(time.time(), device.index, device.id, sensors_values)
 
     def flush_offline_buffer(self) -> None:
@@ -66,16 +74,24 @@ class AliotSyncManager:
         if not rows:
             return
 
-        print(f"Reconnected to alivecode, flushing {len(rows)} buffered offline reading(s)")
+        print(
+            f"Reconnected to lrima culture, flushing {len(rows)} buffered offline reading(s)"
+        )
 
         try:
-            for i, (_timestamp, device_index, device_id, sensors_values) in enumerate(rows):
+            for i, (_timestamp, device_index, device_id, sensors_values) in enumerate(
+                rows
+            ):
                 if i > 0:
                     time.sleep(ALIOT_FLUSH_INTERVAL_SEC)
-                doc_json = self.decoder.build_doc_payload(device_index, device_id, sensors_values)
+                doc_json = self.decoder.build_doc_payload(
+                    device_index, device_id, sensors_values
+                )
                 self.sensor_iot.update_doc(doc_json)
         except Exception as exc:
-            print(f"Failed to flush offline buffer, will retry on next reconnect: {exc}")
+            print(
+                f"Failed to flush offline buffer, will retry on next reconnect: {exc}"
+            )
             return
 
         if self.csv_buffer.clear():
