@@ -37,9 +37,9 @@
         "other_text_thickness": 0.15,
         "other_text_upright": false,
         "pads": {
-          "drill": 3.048,
-          "height": 3.048,
-          "width": 3.048
+          "drill": 0.8,
+          "height": 1.27,
+          "width": 2.54
         },
         "silk_line_width": 0.1,
         "silk_text_italic": false,
@@ -48,7 +48,7 @@
         "silk_text_thickness": 0.1,
         "silk_text_upright": false,
         "zones": {
-          "min_clearance": 0.5
+          "min_clearance": 0.0
         }
       },
       "diff_pair_dimensions": [],
@@ -430,7 +430,7 @@
       "no_connect_dangling": "warning",
       "pin_not_connected": "error",
       "pin_not_driven": "error",
-      "pin_to_pin": "error",
+      "pin_to_pin": "warning",
       "power_pin_not_driven": "error",
       "same_local_global_label": "warning",
       "similar_label_and_power": "warning",
@@ -440,7 +440,6 @@
       "single_global_label": "ignore",
       "unannotated": "error",
       "unconnected_wire_endpoint": "warning",
-      "undefined_netclass": "error",
       "unit_value_mismatch": "error",
       "unresolved_variable": "error",
       "wire_dangling": "error"
@@ -451,7 +450,7 @@
     "pinned_symbol_libs": []
   },
   "meta": {
-    "filename": "lrima-ground.kicad_pro",
+    "filename": "ProDoc_Relay 5x v2_2026-05-06_2.kicad_pro",
     "version": 3
   },
   "net_settings": {
@@ -529,7 +528,7 @@
           "group_by": true,
           "label": "Value",
           "name": "Value",
-          "show": true
+          "show": false
         },
         {
           "group_by": true,
@@ -553,7 +552,7 @@
           "group_by": true,
           "label": "Footprint",
           "name": "Footprint",
-          "show": false
+          "show": true
         },
         {
           "group_by": false,
@@ -569,6 +568,78 @@
         },
         {
           "group_by": false,
+          "label": "@Create Date",
+          "name": "@Create Date",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "@Create Time",
+          "name": "@Create Time",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "@Page Count",
+          "name": "@Page Count",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "@Page Name",
+          "name": "@Page Name",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "@Page No",
+          "name": "@Page No",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "@Project Name",
+          "name": "@Project Name",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "@Schematic Name",
+          "name": "@Schematic Name",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "@Update Date",
+          "name": "@Update Date",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "@Update Time",
+          "name": "@Update Time",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "Company",
+          "name": "Company",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "Drawn",
+          "name": "Drawn",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "LCSC Part Name",
+          "name": "LCSC Part Name",
+          "show": false
+        },
+        {
+          "group_by": false,
           "label": "Manufacturer",
           "name": "Manufacturer",
           "show": false
@@ -577,6 +648,30 @@
           "group_by": false,
           "label": "Manufacturer Part",
           "name": "Manufacturer Part",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "Overload Voltage (Max)",
+          "name": "Overload Voltage (Max)",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "Page Size",
+          "name": "Page Size",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "Part Number",
+          "name": "Part Number",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "Reviewed",
+          "name": "Reviewed",
           "show": false
         },
         {
@@ -593,8 +688,14 @@
         },
         {
           "group_by": false,
-          "label": "LCSC Part Name",
-          "name": "LCSC Part Name",
+          "label": "Version",
+          "name": "Version",
+          "show": false
+        },
+        {
+          "group_by": false,
+          "label": "@Board Name",
+          "name": "@Board Name",
           "show": false
         },
         {
@@ -627,7 +728,7 @@
       "include_excluded_from_bom": true,
       "name": "",
       "sort_asc": true,
-      "sort_field": "Reference"
+      "sort_field": "Sim.Device"
     },
     "connection_grid_size": 50.0,
     "drawing": {
@@ -671,7 +772,7 @@
   },
   "sheets": [
     [
-      "20522c05-8c7c-429d-83f1-5915480e5a05",
+      "214b41da-58de-4396-b1ec-8b91c4e82397",
       "Root"
     ]
   ],
