@@ -1,5 +1,6 @@
 board:
   name: lrima_greenhouse_nrf52833
+  full_name: LRIMa Greenhouse capteur nRF52833
   vendor: LRIMa
   socs:
     - name: nrf52833
