@@ -23,7 +23,7 @@
         # it. Provide a Nix-packaged python (3.12, matching the venv) with
         # jsonschema on the shell PATH.
         # packages = [(pkgs.python312.withPackages (ps: [ps.jsonschema]))];
-        # autoBootstrap = true;
+        autoBootstrap = true;
         # extraShellHook = "";
       };
     };
